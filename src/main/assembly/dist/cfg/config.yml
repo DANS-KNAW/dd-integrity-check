@@ -1,0 +1,41 @@
+#
+# dd-integrity-check configuration file
+#
+server:
+  applicationContextPath: /
+  adminContextPath: /
+  applicationConnectors:
+    - type: http
+      port: 20390
+  adminConnectors:
+    - type: http
+      port: 20391
+  # Logs the requests to the Jetty http server
+  requestLog:
+    appenders:
+      - type: file
+        archive: false
+        timeZone: system
+        currentLogFilename: /var/opt/dans.knaw.nl/log/dd-integrity-check/request.log
+
+integrityCheck:
+  startAfter: '00:00'
+  startBefore: '06:00'
+  chunkSize: 1G
+
+
+#
+# See https://www.dropwizard.io/en/latest/manual/configuration.html#logging
+#
+logging:
+  level: INFO
+  appenders:
+    - type: file
+      archive: false
+      timeZone: system
+      currentLogFilename: /var/opt/dans.knaw.nl/log/dd-integrity-check/dd-integrity-check.log
+    - type:  console
+      # Used in combination with journald, which already adds the timestamp
+      logFormat: "%-5p %c{0}: %m%n%dwREx"
+  loggers:
+      'org.hibernate.engine.internal.StatisticalLoggingSessionEventListener': 'OFF'
