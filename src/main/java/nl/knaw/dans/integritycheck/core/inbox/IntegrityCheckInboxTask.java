@@ -59,7 +59,7 @@ public class IntegrityCheckInboxTask implements Runnable {
             for (CSVRecord record : csvParser) {
                 Transaction transaction = session.beginTransaction();
                 try {
-                    String fileId = record.get("FILEID");
+                    Long fileId = Long.parseLong(record.get("FILEID"));
                     String expectedSha1 = record.get("SHA1");
 
                     List<IntegrityCheckTask> existingTasks = integrityCheckTaskDao.findPendingOrRecentTasks(fileId, minimalCheckTimestamp);

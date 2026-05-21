@@ -19,6 +19,7 @@ package nl.knaw.dans.integritycheck.config;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.core.Configuration;
 import io.dropwizard.db.DataSourceFactory;
+import nl.knaw.dans.lib.util.DataverseClientFactory;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
@@ -37,5 +38,9 @@ public class DdIntegrityCheckConfig extends Configuration {
     @Valid
     @NotNull
     private IntegrityCheckConfig integrityCheck;
+
+    @Valid
+    @NotNull
+    private DataverseClientFactory dataverse;
 
 }

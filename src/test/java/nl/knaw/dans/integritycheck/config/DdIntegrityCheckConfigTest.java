@@ -18,7 +18,6 @@ package nl.knaw.dans.integritycheck.config;
 import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
-import io.dropwizard.util.DataSize;
 import io.dropwizard.util.Duration;
 import org.junit.jupiter.api.Test;
 
@@ -30,11 +29,12 @@ class DdIntegrityCheckConfigTest {
 
     @Test
     void should_load_config_from_yaml() throws Exception {
+        var mapper = Jackson.newObjectMapper();
         var factory = new YamlConfigurationFactory<>(DdIntegrityCheckConfig.class,
             Validators.newValidator(),
-            Jackson.newObjectMapper(),
+            mapper,
             "dw");
-        
+
         var configFile = new File("src/main/assembly/dist/cfg/config.yml");
         var config = factory.build(configFile);
 

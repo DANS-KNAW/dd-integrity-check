@@ -60,7 +60,7 @@ class IntegrityCheckInboxTaskTest {
     @Test
     void should_schedule_tasks_from_csv() throws Exception {
         Path csvFile = tempDir.resolve("input.csv");
-        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,SHA1\nfile1,sha1-1\nfile2,sha1-2", StandardCharsets.UTF_8);
+        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,SHA1\n1,sha1-1\n2,sha1-2", StandardCharsets.UTF_8);
 
         IntegrityCheckInboxTask task = new IntegrityCheckInboxTask(
             csvFile,
@@ -82,7 +82,7 @@ class IntegrityCheckInboxTaskTest {
             session.close();
         }
         assertThat(tasks).hasSize(2);
-        assertThat(tasks).extracting(IntegrityCheckTask::getFileId).containsExactlyInAnyOrder("file1", "file2");
+        assertThat(tasks).extracting(IntegrityCheckTask::getFileId).containsExactlyInAnyOrder(1L, 2L);
         assertThat(new File(outbox, "input.csv")).exists();
     }
 
@@ -91,13 +91,13 @@ class IntegrityCheckInboxTaskTest {
         // Prepare pending task
         daoTestRule.inTransaction(() -> {
             IntegrityCheckTask pendingTask = new IntegrityCheckTask();
-            pendingTask.setFileId("file1");
+            pendingTask.setFileId(1L);
             pendingTask.setExpectedSha1("old-sha1");
             integrityCheckTaskDao.save(pendingTask);
         });
 
         Path csvFile = tempDir.resolve("input.csv");
-        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,SHA1\nfile1,new-sha1", StandardCharsets.UTF_8);
+        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,SHA1\n1,new-sha1", StandardCharsets.UTF_8);
 
         IntegrityCheckInboxTask task = new IntegrityCheckInboxTask(
             csvFile,
@@ -113,7 +113,7 @@ class IntegrityCheckInboxTaskTest {
         Session session = daoTestRule.getSessionFactory().openSession();
         try {
             ManagedSessionContext.bind(session);
-            tasks = integrityCheckTaskDao.findByFileId("file1");
+            tasks = integrityCheckTaskDao.findByFileId(1L);
         } finally {
             ManagedSessionContext.unbind(daoTestRule.getSessionFactory());
             session.close();
@@ -127,7 +127,7 @@ class IntegrityCheckInboxTaskTest {
         // Prepare recently executed task
         daoTestRule.inTransaction(() -> {
             IntegrityCheckTask recentTask = new IntegrityCheckTask();
-            recentTask.setFileId("file1");
+            recentTask.setFileId(1L);
             recentTask.setExpectedSha1("sha1-1");
             recentTask.setCalculatedSha1("sha1-1");
             recentTask.setCalculationTimestamp(OffsetDateTime.now().minusDays(10));
@@ -135,7 +135,7 @@ class IntegrityCheckInboxTaskTest {
         });
 
         Path csvFile = tempDir.resolve("input.csv");
-        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,SHA1\nfile1,sha1-1", StandardCharsets.UTF_8);
+        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,SHA1\n1,sha1-1", StandardCharsets.UTF_8);
 
         IntegrityCheckInboxTask task = new IntegrityCheckInboxTask(
             csvFile,
@@ -151,7 +151,7 @@ class IntegrityCheckInboxTaskTest {
         Session session = daoTestRule.getSessionFactory().openSession();
         try {
             ManagedSessionContext.bind(session);
-            tasks = integrityCheckTaskDao.findByFileId("file1");
+            tasks = integrityCheckTaskDao.findByFileId(1L);
         } finally {
             ManagedSessionContext.unbind(daoTestRule.getSessionFactory());
             session.close();
@@ -164,7 +164,7 @@ class IntegrityCheckInboxTaskTest {
         // Prepare old executed task
         daoTestRule.inTransaction(() -> {
             IntegrityCheckTask oldTask = new IntegrityCheckTask();
-            oldTask.setFileId("file1");
+            oldTask.setFileId(1L);
             oldTask.setExpectedSha1("sha1-1");
             oldTask.setCalculatedSha1("sha1-1");
             oldTask.setCalculationTimestamp(OffsetDateTime.now().minusDays(40));
@@ -172,7 +172,7 @@ class IntegrityCheckInboxTaskTest {
         });
 
         Path csvFile = tempDir.resolve("input.csv");
-        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,SHA1\nfile1,sha1-1", StandardCharsets.UTF_8);
+        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,SHA1\n1,sha1-1", StandardCharsets.UTF_8);
 
         IntegrityCheckInboxTask task = new IntegrityCheckInboxTask(
             csvFile,
@@ -188,7 +188,7 @@ class IntegrityCheckInboxTaskTest {
         Session session = daoTestRule.getSessionFactory().openSession();
         try {
             ManagedSessionContext.bind(session);
-            tasks = integrityCheckTaskDao.findByFileId("file1");
+            tasks = integrityCheckTaskDao.findByFileId(1L);
         } finally {
             ManagedSessionContext.unbind(daoTestRule.getSessionFactory());
             session.close();
@@ -201,7 +201,7 @@ class IntegrityCheckInboxTaskTest {
         int totalRecords = 2500;
         StringBuilder csvContent = new StringBuilder("FILEID,SHA1\n");
         for (int i = 0; i < totalRecords; i++) {
-            csvContent.append("file").append(i).append(",sha1-").append(i).append("\n");
+            csvContent.append(i).append(",sha1-").append(i).append("\n");
         }
 
         Path csvFile = tempDir.resolve("large_input.csv");

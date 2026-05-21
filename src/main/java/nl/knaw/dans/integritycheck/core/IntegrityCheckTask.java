@@ -47,7 +47,7 @@ public class IntegrityCheckTask {
     private OffsetDateTime creationTimestamp;
 
     @Column(name = "file_id", nullable = false)
-    private String fileId;
+    private Long fileId;
 
     @Column(name = "expected_sha1", nullable = false)
     private String expectedSha1;

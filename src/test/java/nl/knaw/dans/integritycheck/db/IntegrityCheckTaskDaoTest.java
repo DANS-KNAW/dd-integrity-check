@@ -44,29 +44,29 @@ class IntegrityCheckTaskDaoTest {
     @Test
     void save_should_persist_task() {
         var task = IntegrityCheckTask.builder()
-            .fileId("file-1")
+            .fileId(1L)
             .expectedSha1("sha-1")
             .build();
 
         var savedTask = daoTestRule.inTransaction(() -> integrityCheckTaskDao.save(task));
 
         assertThat(savedTask.getId()).isNotNull();
-        assertThat(savedTask.getFileId()).isEqualTo("file-1");
+        assertThat(savedTask.getFileId()).isEqualTo(1L);
         assertThat(savedTask.getCreationTimestamp()).isNotNull();
     }
 
     @Test
     void findTasksToExecute_should_return_tasks_without_calculated_sha1() {
         daoTestRule.inTransaction(() -> {
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId("file-1").expectedSha1("sha-1").build());
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId("file-2").expectedSha1("sha-2").calculatedSha1("sha-2").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).expectedSha1("sha-2").calculatedSha1("sha-2").build());
             return null;
         });
 
         List<IntegrityCheckTask> tasks = daoTestRule.inTransaction(() -> integrityCheckTaskDao.findTasksToExecute());
 
         assertThat(tasks).hasSize(1);
-        assertThat(tasks.get(0).getFileId()).isEqualTo("file-1");
+        assertThat(tasks.get(0).getFileId()).isEqualTo(1L);
     }
 
     @Test
@@ -77,19 +77,19 @@ class IntegrityCheckTaskDaoTest {
 
         daoTestRule.inTransaction(() -> {
             // Pending task for file-1
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId("file-1").expectedSha1("sha-1").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
             // Recent task for file-1
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId("file-1").expectedSha1("sha-1").calculatedSha1("sha-1").calculationTimestamp(now).build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").calculatedSha1("sha-1").calculationTimestamp(now).build());
             // Old task for file-1 (should NOT be returned)
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId("file-1").expectedSha1("sha-1").calculatedSha1("sha-1").calculationTimestamp(longAgo).build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").calculatedSha1("sha-1").calculationTimestamp(longAgo).build());
             // Pending task for file-2 (should NOT be returned when querying for file-1)
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId("file-2").expectedSha1("sha-2").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).expectedSha1("sha-2").build());
             return null;
         });
 
-        List<IntegrityCheckTask> tasks = daoTestRule.inTransaction(() -> integrityCheckTaskDao.findPendingOrRecentTasks("file-1", recently));
+        List<IntegrityCheckTask> tasks = daoTestRule.inTransaction(() -> integrityCheckTaskDao.findPendingOrRecentTasks(1L, recently));
 
         assertThat(tasks).hasSize(2);
-        assertThat(tasks).allMatch(t -> t.getFileId().equals("file-1"));
+        assertThat(tasks).allMatch(t -> t.getFileId().equals(1L));
     }
 }

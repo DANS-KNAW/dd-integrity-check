@@ -40,7 +40,7 @@ public class IntegrityCheckTaskDao extends AbstractDAO<IntegrityCheckTask> {
         return Optional.ofNullable(get(id));
     }
 
-    public List<IntegrityCheckTask> findByFileId(String fileId) {
+    public List<IntegrityCheckTask> findByFileId(Long fileId) {
         CriteriaBuilder cb = currentSession().getCriteriaBuilder();
         CriteriaQuery<IntegrityCheckTask> cq = cb.createQuery(IntegrityCheckTask.class);
         Root<IntegrityCheckTask> root = cq.from(IntegrityCheckTask.class);
@@ -57,7 +57,7 @@ public class IntegrityCheckTaskDao extends AbstractDAO<IntegrityCheckTask> {
         return currentSession().createQuery(cq).getResultList();
     }
 
-    public List<IntegrityCheckTask> findPendingOrRecentTasks(String fileId, OffsetDateTime minimalCheckTimestamp) {
+    public List<IntegrityCheckTask> findPendingOrRecentTasks(Long fileId, OffsetDateTime minimalCheckTimestamp) {
         CriteriaBuilder cb = currentSession().getCriteriaBuilder();
         CriteriaQuery<IntegrityCheckTask> cq = cb.createQuery(IntegrityCheckTask.class);
         Root<IntegrityCheckTask> root = cq.from(IntegrityCheckTask.class);

@@ -28,6 +28,10 @@ database:
     hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
     hibernate.hbm2ddl.auto: update
 
+dataverse:
+  baseUrl: http://localhost:8080
+  apiKey: 'secret-api-key'
+
 integrityCheck:
   inbox: data/inbox
   outbox: data/outbox
