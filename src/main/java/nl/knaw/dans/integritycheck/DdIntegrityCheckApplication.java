@@ -84,7 +84,7 @@ public class DdIntegrityCheckApplication extends Application<DdIntegrityCheckCon
             .executorService(environment.lifecycle().executorService("inbox").minThreads(1).maxThreads(1).build())
             .build();
 
-        final var integrityCheckTaskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao);
+        final var integrityCheckTaskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, checksumCalculationConfig.getScheduling());
         final DataverseClient dataverseClient = config.getDataverse().build(environment, "dataverse");
         final var integrityCheckTaskFactory = new IntegrityCheckTaskFactory(integrityCheckTaskDao, hibernateBundle.getSessionFactory(), dataverseClient, integrityCheckConfig);
 

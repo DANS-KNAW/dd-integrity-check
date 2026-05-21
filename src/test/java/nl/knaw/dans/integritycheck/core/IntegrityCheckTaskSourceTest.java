@@ -17,14 +17,21 @@ package nl.knaw.dans.integritycheck.core;
 
 import io.dropwizard.testing.junit5.DAOTestExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
+import nl.knaw.dans.integritycheck.config.SchedulingConfig;
 import nl.knaw.dans.integritycheck.db.IntegrityCheckTaskDao;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(DropwizardExtensionsSupport.class)
 class IntegrityCheckTaskSourceTest {
@@ -35,11 +42,16 @@ class IntegrityCheckTaskSourceTest {
 
     private IntegrityCheckTaskDao integrityCheckTaskDao;
     private IntegrityCheckTaskSource taskSource;
+    private SchedulingConfig schedulingConfig;
 
     @BeforeEach
     void setUp() {
         integrityCheckTaskDao = new IntegrityCheckTaskDao(daoTestRule.getSessionFactory());
-        taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao);
+        schedulingConfig = Mockito.mock(SchedulingConfig.class);
+        // Default to always open window
+        when(schedulingConfig.getStartAfter()).thenReturn(LocalTime.MIN);
+        when(schedulingConfig.getStartBefore()).thenReturn(LocalTime.MAX);
+        taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, schedulingConfig);
     }
 
     @Test
@@ -89,6 +101,105 @@ class IntegrityCheckTaskSourceTest {
     void nextInput_should_return_empty_if_no_tasks() {
         Optional<IntegrityCheckTask> task = daoTestRule.inTransaction(() -> taskSource.nextInput());
 
+        assertThat(task).isEmpty();
+    }
+
+    @Test
+    void nextInput_should_return_empty_if_current_time_is_before_startAfter() {
+        when(schedulingConfig.getStartAfter()).thenReturn(LocalTime.now().plusHours(1));
+        when(schedulingConfig.getStartBefore()).thenReturn(LocalTime.now().plusHours(2));
+
+        daoTestRule.inTransaction(() -> {
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
+            return null;
+        });
+
+        Optional<IntegrityCheckTask> task = daoTestRule.inTransaction(() -> taskSource.nextInput());
+        assertThat(task).isEmpty();
+    }
+
+    @Test
+    void nextInput_should_return_empty_if_current_time_is_after_startBefore() {
+        when(schedulingConfig.getStartAfter()).thenReturn(LocalTime.now().minusHours(2));
+        when(schedulingConfig.getStartBefore()).thenReturn(LocalTime.now().minusHours(1));
+
+        daoTestRule.inTransaction(() -> {
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
+            return null;
+        });
+
+        Optional<IntegrityCheckTask> task = daoTestRule.inTransaction(() -> taskSource.nextInput());
+        assertThat(task).isEmpty();
+    }
+
+    @Test
+    void nextInput_should_return_task_if_current_time_is_within_window() {
+        when(schedulingConfig.getStartAfter()).thenReturn(LocalTime.now().minusHours(1));
+        when(schedulingConfig.getStartBefore()).thenReturn(LocalTime.now().plusHours(1));
+
+        daoTestRule.inTransaction(() -> {
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
+            return null;
+        });
+
+        Optional<IntegrityCheckTask> task = daoTestRule.inTransaction(() -> taskSource.nextInput());
+        assertThat(task).isPresent();
+    }
+
+    @Test
+    void nextInput_should_handle_midnight_crossing_window_inside() {
+        // Window from 22:00 to 06:00. Assume current time is 23:00
+        when(schedulingConfig.getStartAfter()).thenReturn(LocalTime.of(22, 0));
+        when(schedulingConfig.getStartBefore()).thenReturn(LocalTime.of(6, 0));
+
+        // 2024-01-01 23:00 UTC
+        Clock clock = Clock.fixed(Instant.parse("2024-01-01T23:00:00Z"), ZoneId.of("UTC"));
+        taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, schedulingConfig, clock);
+
+        daoTestRule.inTransaction(() -> {
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
+            return null;
+        });
+
+        Optional<IntegrityCheckTask> task = daoTestRule.inTransaction(() -> taskSource.nextInput());
+        assertThat(task).isPresent();
+    }
+
+    @Test
+    void nextInput_should_handle_midnight_crossing_window_inside_after_midnight() {
+        // Window from 22:00 to 06:00. Assume current time is 01:00
+        when(schedulingConfig.getStartAfter()).thenReturn(LocalTime.of(22, 0));
+        when(schedulingConfig.getStartBefore()).thenReturn(LocalTime.of(6, 0));
+
+        // 2024-01-01 01:00 UTC
+        Clock clock = Clock.fixed(Instant.parse("2024-01-01T01:00:00Z"), ZoneId.of("UTC"));
+        taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, schedulingConfig, clock);
+
+        daoTestRule.inTransaction(() -> {
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
+            return null;
+        });
+
+        Optional<IntegrityCheckTask> task = daoTestRule.inTransaction(() -> taskSource.nextInput());
+        assertThat(task).isPresent();
+    }
+
+    @Test
+    void nextInput_should_handle_midnight_crossing_window_outside() {
+        // Window from 22:00 to 06:00. Assume current time is 12:00
+        when(schedulingConfig.getStartAfter()).thenReturn(LocalTime.of(22, 0));
+        when(schedulingConfig.getStartBefore()).thenReturn(LocalTime.of(6, 0));
+
+        // 2024-01-01 12:00 UTC
+        Clock clock = Clock.fixed(Instant.parse("2024-01-01T12:00:00Z"), ZoneId.of("UTC"));
+        taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, schedulingConfig, clock);
+
+        daoTestRule.inTransaction(() -> {
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
+            return null;
+        });
+
+        Optional<IntegrityCheckTask> task = daoTestRule.inTransaction(() -> taskSource.nextInput());
         assertThat(task).isEmpty();
     }
 }

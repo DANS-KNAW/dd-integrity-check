@@ -16,22 +16,50 @@
 package nl.knaw.dans.integritycheck.core;
 
 import lombok.RequiredArgsConstructor;
+import nl.knaw.dans.integritycheck.config.SchedulingConfig;
 import nl.knaw.dans.integritycheck.db.IntegrityCheckTaskDao;
 import nl.knaw.dans.lib.util.pollingtaskexec.TaskSource;
 
+import java.time.Clock;
+import java.time.LocalTime;
 import java.util.Optional;
 
 @RequiredArgsConstructor
 public class IntegrityCheckTaskSource implements TaskSource<IntegrityCheckTask> {
     private final IntegrityCheckTaskDao integrityCheckTaskDao;
+    private final SchedulingConfig schedulingConfig;
+    private final Clock clock;
+
+    public IntegrityCheckTaskSource(IntegrityCheckTaskDao integrityCheckTaskDao, SchedulingConfig schedulingConfig) {
+        this(integrityCheckTaskDao, schedulingConfig, Clock.systemDefaultZone());
+    }
 
     @Override
     public Optional<IntegrityCheckTask> nextInput() {
+        if (isOutsideWindow()) {
+            return Optional.empty();
+        }
+
         return integrityCheckTaskDao.findTasksToExecute().stream()
             .findFirst()
             .map(task -> {
                 task.setStatus(IntegrityCheckTaskStatus.SCHEDULED);
                 return integrityCheckTaskDao.save(task);
             });
+    }
+
+    private boolean isOutsideWindow() {
+        var now = LocalTime.now(clock);
+        var startAfter = schedulingConfig.getStartAfter();
+        var startBefore = schedulingConfig.getStartBefore();
+
+        if (startAfter.isBefore(startBefore)) {
+            // Standard window, e.g., 09:00 to 17:00
+            return now.isBefore(startAfter) || now.isAfter(startBefore);
+        }
+        else {
+            // Window crossing midnight, e.g., 22:00 to 06:00
+            return now.isBefore(startAfter) && now.isAfter(startBefore);
+        }
     }
 }

@@ -38,9 +38,6 @@ integrityCheck:
     inbox: /var/opt/dans.knaw.nl/tmp/integrity-check/inbox
     outbox: /var/opt/dans.knaw.nl/tmp/integrity-check/outbox
     minimalFrequency: 30days
-    scheduling:
-      startAfter: '00:00'
-      startBefore: '06:00'
   checksumCalculation:
     pollingInterval: 1s
     scheduling:

@@ -32,8 +32,4 @@ public class FileRecordsConfig {
 
     @NotNull
     private Duration minimalFrequency;
-
-    @Valid
-    @NotNull
-    private SchedulingConfig scheduling;
 }
