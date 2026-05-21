@@ -17,16 +17,14 @@ package nl.knaw.dans.integritycheck.config;
 
 import lombok.Data;
 
-import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import java.time.LocalTime;
 
 @Data
-public class IntegrityCheckConfig {
-    @Valid
+public class SchedulingConfig {
     @NotNull
-    private FileRecordsConfig fileRecords;
+    private LocalTime startAfter;
 
-    @Valid
     @NotNull
-    private ChecksumCalculationConfig checksumCalculation;
+    private LocalTime startBefore;
 }

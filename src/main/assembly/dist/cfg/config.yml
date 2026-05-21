@@ -32,25 +32,30 @@ dataverse:
   baseUrl: http://localhost:8080
   apiKey: 'secret-api-key'
 
-
-
 integrityCheck:
-  inbox: /var/opt/dans.knaw.nl/tmp/integrity-check/inbox
-  outbox: /var/opt/dans.knaw.nl/tmp/integrity-check/outbox
-  startAfter: '00:00'
-  startBefore: '06:00'
-  chunkSize: 1G
-  retries: 3
-  waitBetweenRetries: 5s
-  minimalFrequency: 30days
-  pollingInterval: 1s
-  taskExecutor:
-    nameFormat: "integrity-check-worker-%d"
-    maxQueueSize: 5000
-    minThreads: 3
-    maxThreads: 3
-    keepAliveTime: 60 seconds
-
+  # Where and how often to look for CSVs containing file records and when to schedule
+  fileRecords:
+    inbox: /var/opt/dans.knaw.nl/tmp/integrity-check/inbox
+    outbox: /var/opt/dans.knaw.nl/tmp/integrity-check/outbox
+    minimalFrequency: 30days
+    scheduling:
+      startAfter: '00:00'
+      startBefore: '06:00'
+  checksumCalculation:
+    pollingInterval: 1s
+    scheduling:
+      startAfter: '00:00'
+      startBefore: '06:00'
+    download:
+      chunkSize: 1G
+      retries: 3
+      waitBetweenRetries: 5s
+    taskExecutor:
+      nameFormat: "integrity-check-worker-%d"
+      maxQueueSize: 5000
+      minThreads: 3
+      maxThreads: 3
+      keepAliveTime: 60 seconds
 
 #
 # See https://www.dropwizard.io/en/latest/manual/configuration.html#logging

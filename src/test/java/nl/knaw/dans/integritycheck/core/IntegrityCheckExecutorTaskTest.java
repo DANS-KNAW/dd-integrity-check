@@ -19,6 +19,7 @@ import io.dropwizard.testing.junit5.DAOTestExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import io.dropwizard.util.DataSize;
 import io.dropwizard.util.Duration;
+import nl.knaw.dans.integritycheck.config.ChecksumCalculationConfig;
 import nl.knaw.dans.integritycheck.config.IntegrityCheckConfig;
 import nl.knaw.dans.integritycheck.db.IntegrityCheckTaskDao;
 import nl.knaw.dans.lib.dataverse.*;
@@ -63,9 +64,14 @@ class IntegrityCheckExecutorTaskTest {
         basicFileAccessApi = mock(BasicFileAccessApi.class);
         fileApi = mock(FileApi.class);
         config = new IntegrityCheckConfig();
-        config.setChunkSize(DataSize.mebibytes(1));
-        config.setRetries(3);
-        config.setWaitBetweenRetries(Duration.milliseconds(1));
+        var checksumCalculation = new ChecksumCalculationConfig();
+        checksumCalculation.setPollingInterval(Duration.milliseconds(10));
+        var download = new nl.knaw.dans.integritycheck.config.DownloadConfig();
+        download.setChunkSize(DataSize.mebibytes(1));
+        download.setRetries(3);
+        download.setWaitBetweenRetries(Duration.milliseconds(1));
+        checksumCalculation.setDownload(download);
+        config.setChecksumCalculation(checksumCalculation);
         
         when(dataverseClient.basicFileAccess(any(Long.class))).thenReturn(basicFileAccessApi);
         when(dataverseClient.file(any(Long.class))).thenReturn(fileApi);
@@ -156,7 +162,7 @@ class IntegrityCheckExecutorTaskTest {
         Long fileId = 1L;
 
         // Set chunk size small enough to have at least 2 chunks
-        config.setChunkSize(DataSize.bytes(10));
+        config.getChecksumCalculation().getDownload().setChunkSize(DataSize.bytes(10));
         
         DataFile dataFile = new DataFile();
         dataFile.setFilesize(content.length());

@@ -15,18 +15,20 @@
  */
 package nl.knaw.dans.integritycheck.config;
 
+import io.dropwizard.util.DataSize;
+import io.dropwizard.util.Duration;
 import lombok.Data;
 
-import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
 @Data
-public class IntegrityCheckConfig {
-    @Valid
+public class DownloadConfig {
     @NotNull
-    private FileRecordsConfig fileRecords;
+    private DataSize chunkSize;
 
-    @Valid
     @NotNull
-    private ChecksumCalculationConfig checksumCalculation;
+    private int retries;
+
+    @NotNull
+    private Duration waitBetweenRetries;
 }

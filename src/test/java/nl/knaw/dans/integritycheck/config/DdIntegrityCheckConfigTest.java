@@ -39,7 +39,7 @@ class DdIntegrityCheckConfigTest {
         var config = factory.build(configFile);
 
         assertThat(config.getIntegrityCheck()).isNotNull();
-        assertThat(config.getIntegrityCheck().getMinimalFrequency()).isEqualTo(Duration.days(30));
-        assertThat(config.getIntegrityCheck().getChunkSize().toGigabytes()).isEqualTo(1);
+        assertThat(config.getIntegrityCheck().getFileRecords().getMinimalFrequency()).isEqualTo(Duration.days(30));
+        assertThat(config.getIntegrityCheck().getChecksumCalculation().getDownload().getChunkSize().toGigabytes()).isEqualTo(1);
     }
 }

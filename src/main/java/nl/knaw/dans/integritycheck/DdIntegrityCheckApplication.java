@@ -66,16 +66,19 @@ public class DdIntegrityCheckApplication extends Application<DdIntegrityCheckCon
     public void run(final DdIntegrityCheckConfig config, final Environment environment) {
         final IntegrityCheckTaskDao integrityCheckTaskDao = new IntegrityCheckTaskDao(hibernateBundle.getSessionFactory());
 
-        final var inboxConfig = config.getIntegrityCheck();
+        final var integrityCheckConfig = config.getIntegrityCheck();
+        final var fileRecordsConfig = integrityCheckConfig.getFileRecords();
+        final var checksumCalculationConfig = integrityCheckConfig.getChecksumCalculation();
+
         final var inboxTaskFactory = new IntegrityCheckInboxTaskFactory(
             integrityCheckTaskDao,
             hibernateBundle.getSessionFactory(),
-            inboxConfig.getOutbox(),
-            Duration.ofMillis(inboxConfig.getMinimalFrequency().toMilliseconds())
+            fileRecordsConfig.getOutbox(),
+            Duration.ofMillis(fileRecordsConfig.getMinimalFrequency().toMilliseconds())
         );
 
         final var inbox = Inbox.builder()
-            .inbox(inboxConfig.getInbox().toPath())
+            .inbox(fileRecordsConfig.getInbox().toPath())
             .fileFilter(FileFilterUtils.fileFileFilter().and((FileFilterUtils.suffixFileFilter(".csv"))))
             .taskFactory(inboxTaskFactory)
             .executorService(environment.lifecycle().executorService("inbox").minThreads(1).maxThreads(1).build())
@@ -83,13 +86,13 @@ public class DdIntegrityCheckApplication extends Application<DdIntegrityCheckCon
 
         final var integrityCheckTaskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao);
         final DataverseClient dataverseClient = config.getDataverse().build(environment, "dataverse");
-        final var integrityCheckTaskFactory = new IntegrityCheckTaskFactory(integrityCheckTaskDao, hibernateBundle.getSessionFactory(), dataverseClient, config.getIntegrityCheck());
+        final var integrityCheckTaskFactory = new IntegrityCheckTaskFactory(integrityCheckTaskDao, hibernateBundle.getSessionFactory(), dataverseClient, integrityCheckConfig);
 
-        final var taskScheduler = new ExecutorServiceTaskScheduler(config.getIntegrityCheck().getTaskExecutor().build(environment));
+        final var taskScheduler = new ExecutorServiceTaskScheduler(checksumCalculationConfig.getTaskExecutor().build(environment));
         final var pollingTaskExecutor = new PollingTaskExecutor<>(
             "integrity-check-executor",
             environment.lifecycle().scheduledExecutorService("integrity-check-executor").build(),
-            Duration.ofMillis(config.getIntegrityCheck().getPollingInterval().toMilliseconds()),
+            Duration.ofMillis(checksumCalculationConfig.getPollingInterval().toMilliseconds()),
             integrityCheckTaskSource,
             integrityCheckTaskFactory,
             taskScheduler

@@ -107,7 +107,7 @@ public class IntegrityCheckExecutorTask implements Runnable {
 
     private String calculateSha1(Long fileId) throws IOException, DataverseException, InterruptedException {
         long fileSize = dataverseClient.file(fileId).getMetadata().getData().getDataFile().getFilesize();
-        long chunkSize = config.getChunkSize().toBytes();
+        long chunkSize = config.getChecksumCalculation().getDownload().getChunkSize().toBytes();
         byte[] buffer = new byte[8192];
         MessageDigest digest;
         try {
@@ -126,8 +126,8 @@ public class IntegrityCheckExecutorTask implements Runnable {
     }
 
     private void downloadChunkWithRetries(Long fileId, GetFileRange range, MessageDigest digest, byte[] buffer) throws IOException, InterruptedException {
-        int retries = config.getRetries();
-        long waitBetweenRetries = config.getWaitBetweenRetries().toMilliseconds();
+        int retries = config.getChecksumCalculation().getDownload().getRetries();
+        long waitBetweenRetries = config.getChecksumCalculation().getDownload().getWaitBetweenRetries().toMilliseconds();
 
         for (int i = 0; i <= retries; i++) {
             try {
