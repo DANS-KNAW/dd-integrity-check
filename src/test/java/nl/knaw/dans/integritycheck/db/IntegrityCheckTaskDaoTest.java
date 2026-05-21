@@ -76,13 +76,13 @@ class IntegrityCheckTaskDaoTest {
         var longAgo = now.minusDays(10);
 
         daoTestRule.inTransaction(() -> {
-            // Pending task
+            // Pending task for file-1
             integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId("file-1").expectedSha1("sha-1").build());
-            // Recent task
+            // Recent task for file-1
             integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId("file-1").expectedSha1("sha-1").calculatedSha1("sha-1").calculationTimestamp(now).build());
-            // Old task
+            // Old task for file-1 (should NOT be returned)
             integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId("file-1").expectedSha1("sha-1").calculatedSha1("sha-1").calculationTimestamp(longAgo).build());
-            // Different file
+            // Pending task for file-2 (should NOT be returned when querying for file-1)
             integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId("file-2").expectedSha1("sha-2").build());
             return null;
         });
@@ -90,5 +90,6 @@ class IntegrityCheckTaskDaoTest {
         List<IntegrityCheckTask> tasks = daoTestRule.inTransaction(() -> integrityCheckTaskDao.findPendingOrRecentTasks("file-1", recently));
 
         assertThat(tasks).hasSize(2);
+        assertThat(tasks).allMatch(t -> t.getFileId().equals("file-1"));
     }
 }

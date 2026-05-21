@@ -29,7 +29,7 @@
     <artifactId>dd-integrity-check</artifactId>
     <version>0.1.0-SNAPSHOT</version>
 
-    <name>Dd Integrity Check</name>
+    <name>DD Integrity Check</name>
     <url>https://github.com/DANS-KNAW/dd-integrity-check</url>
     <description>Service that checks the integrity of Dataverse datafiles</description>
     <inceptionYear>2026</inceptionYear>
@@ -45,6 +45,19 @@
     </scm>
 
     <dependencies>
+        <dependency>
+            <groupId>nl.knaw.dans</groupId>
+            <artifactId>dans-java-utils</artifactId>
+            <version>3.0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.dropwizard</groupId>
             <artifactId>dropwizard-hibernate</artifactId>

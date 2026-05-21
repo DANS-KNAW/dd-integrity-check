@@ -23,7 +23,11 @@ import io.dropwizard.db.PooledDataSourceFactory;
 import io.dropwizard.hibernate.HibernateBundle;
 import nl.knaw.dans.integritycheck.config.DdIntegrityCheckConfig;
 import nl.knaw.dans.integritycheck.core.IntegrityCheckTask;
+import nl.knaw.dans.integritycheck.core.inbox.IntegrityCheckInboxTaskFactory;
 import nl.knaw.dans.integritycheck.db.IntegrityCheckTaskDao;
+import nl.knaw.dans.lib.util.inbox.Inbox;
+import org.apache.commons.io.filefilter.FileFilterUtils;
+import org.apache.commons.io.filefilter.IOFileFilter;
 
 public class DdIntegrityCheckApplication extends Application<DdIntegrityCheckConfig> {
 
@@ -51,6 +55,23 @@ public class DdIntegrityCheckApplication extends Application<DdIntegrityCheckCon
     @Override
     public void run(final DdIntegrityCheckConfig config, final Environment environment) {
         final IntegrityCheckTaskDao integrityCheckTaskDao = new IntegrityCheckTaskDao(hibernateBundle.getSessionFactory());
+
+        final var inboxConfig = config.getIntegrityCheck();
+        final var inboxTaskFactory = new IntegrityCheckInboxTaskFactory(
+            integrityCheckTaskDao,
+            hibernateBundle.getSessionFactory(),
+            inboxConfig.getOutbox(),
+            java.time.Duration.ofMillis(inboxConfig.getMinimalFrequency().toMilliseconds())
+        );
+
+        final var inbox = Inbox.builder()
+            .inbox(inboxConfig.getInbox().toPath())
+            .fileFilter(FileFilterUtils.fileFileFilter().and((FileFilterUtils.suffixFileFilter(".csv"))))
+            .taskFactory(inboxTaskFactory)
+            .executorService(environment.lifecycle().executorService("inbox").minThreads(1).maxThreads(1).build())
+            .build();
+
+        environment.lifecycle().manage(inbox);
     }
 
 }

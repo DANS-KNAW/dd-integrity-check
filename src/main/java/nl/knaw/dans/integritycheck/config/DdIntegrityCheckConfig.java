@@ -32,12 +32,10 @@ public class DdIntegrityCheckConfig extends Configuration {
 
     @Valid
     @NotNull
-    @JsonProperty("database")
     private DataSourceFactory database = new DataSourceFactory();
 
     @Valid
     @NotNull
-    @JsonProperty("integrityCheck")
     private IntegrityCheckConfig integrityCheck;
 
 }

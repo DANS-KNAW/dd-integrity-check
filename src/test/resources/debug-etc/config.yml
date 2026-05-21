@@ -1,15 +1,40 @@
-
+#
+# dd-integrity-check configuration file
+#
 server:
   applicationContextPath: /
   adminContextPath: /
   applicationConnectors:
     - type: http
-      # Replace with port number unique for this service
-      port: 20000
+      port: 20390
   adminConnectors:
     - type: http
-      # Replace with port number unique for this service
-      port: 20001
+      port: 20391
+  # Logs the requests to the Jetty http server
+  requestLog:
+    appenders:
+      - type: file
+        archive: false
+        timeZone: system
+        currentLogFilename: /var/opt/dans.knaw.nl/log/dd-integrity-check/request.log
+
+database:
+  driverClass: org.postgresql.Driver
+  url: jdbc:postgresql://dev.archaeology.datastations.nl:5432/dd_integrity_check_local_test
+  user: dd_integrity_check
+  password: dd_integrity_check
+  properties:
+    charSet: UTF-8
+    hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
+    hibernate.hbm2ddl.auto: update
+
+integrityCheck:
+  inbox: data/inbox
+  outbox: data/outbox
+  startAfter: '06:00'
+  startBefore: '23:00'
+  chunkSize: 1G
+  minimalFrequency: 30days
 
 #
 # See https://www.dropwizard.io/en/latest/manual/configuration.html#logging
@@ -17,12 +42,12 @@ server:
 logging:
   level: INFO
   appenders:
-    - type: console
-      logFormat: "%-5p [%d{ISO8601}] [%t] %c: %m%n%rEx"
-
     - type: file
       archive: false
-      currentLogFilename: data/dd-integrity-check.log
+      timeZone: system
+      currentLogFilename: /var/opt/dans.knaw.nl/log/dd-integrity-check/dd-integrity-check.log
+    - type:  console
+      # Used in combination with journald, which already adds the timestamp
+      logFormat: "%-5p %c{0}: %m%n%dwREx"
   loggers:
-    'nl.knaw.dans': DEBUG
     'org.hibernate.engine.internal.StatisticalLoggingSessionEventListener': 'OFF'
