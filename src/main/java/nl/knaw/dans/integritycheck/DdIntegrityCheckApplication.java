@@ -19,9 +19,20 @@ package nl.knaw.dans.integritycheck;
 import io.dropwizard.core.Application;
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
+import io.dropwizard.db.PooledDataSourceFactory;
+import io.dropwizard.hibernate.HibernateBundle;
 import nl.knaw.dans.integritycheck.config.DdIntegrityCheckConfig;
+import nl.knaw.dans.integritycheck.core.IntegrityCheckTask;
+import nl.knaw.dans.integritycheck.db.IntegrityCheckTaskDao;
 
 public class DdIntegrityCheckApplication extends Application<DdIntegrityCheckConfig> {
+
+    private final HibernateBundle<DdIntegrityCheckConfig> hibernateBundle = new HibernateBundle<>(IntegrityCheckTask.class) {
+        @Override
+        public PooledDataSourceFactory getDataSourceFactory(DdIntegrityCheckConfig configuration) {
+            return configuration.getDatabase();
+        }
+    };
 
     public static void main(final String[] args) throws Exception {
         new DdIntegrityCheckApplication().run(args);
@@ -29,17 +40,17 @@ public class DdIntegrityCheckApplication extends Application<DdIntegrityCheckCon
 
     @Override
     public String getName() {
-        return "Dd Integrity Check";
+        return "DD Integrity Check";
     }
 
     @Override
     public void initialize(final Bootstrap<DdIntegrityCheckConfig> bootstrap) {
-        // TODO: application initialization
+        bootstrap.addBundle(hibernateBundle);
     }
 
     @Override
     public void run(final DdIntegrityCheckConfig config, final Environment environment) {
-
+        final IntegrityCheckTaskDao integrityCheckTaskDao = new IntegrityCheckTaskDao(hibernateBundle.getSessionFactory());
     }
 
 }

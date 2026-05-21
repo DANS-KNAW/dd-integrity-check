@@ -13,31 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package nl.knaw.dans.integritycheck.config;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import io.dropwizard.core.Configuration;
-import io.dropwizard.db.DataSourceFactory;
-
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
-
+import io.dropwizard.util.DataSize;
+import io.dropwizard.util.Duration;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
+
+import javax.validation.constraints.NotNull;
+import java.io.File;
+import java.time.LocalTime;
 
 @Data
-@EqualsAndHashCode(callSuper = true)
-public class DdIntegrityCheckConfig extends Configuration {
-
-    @Valid
+public class IntegrityCheckConfig {
     @NotNull
-    @JsonProperty("database")
-    private DataSourceFactory database = new DataSourceFactory();
+    private File inbox;
 
-    @Valid
     @NotNull
-    @JsonProperty("integrityCheck")
-    private IntegrityCheckConfig integrityCheck;
+    private File outbox;
 
+    @NotNull
+    private LocalTime startAfter;
+
+    @NotNull
+    private LocalTime startBefore;
+
+    @NotNull
+    private DataSize chunkSize;
+
+    @NotNull
+    private Duration minimalFrequency;
 }

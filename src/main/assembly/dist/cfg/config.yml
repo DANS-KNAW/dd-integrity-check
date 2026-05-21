@@ -18,11 +18,26 @@ server:
         timeZone: system
         currentLogFilename: /var/opt/dans.knaw.nl/log/dd-integrity-check/request.log
 
+database:
+  driverClass: org.postgresql.Driver
+  url: jdbc:postgresql://localhost:5432/dd_integrity_check
+  user: dd_integrity_check
+  password: dd_integrity_check
+  properties:
+    charSet: UTF-8
+    hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
+    hibernate.hbm2ddl.auto: update
+  maxSize: 8
+  minSize: 2
+  initialSize: 2
+
 integrityCheck:
+  inbox: /var/opt/dans.knaw.nl/tmp/integrity-check/inbox
+  outbox: /var/opt/dans.knaw.nl/tmp/integrity-check/outbox
   startAfter: '00:00'
   startBefore: '06:00'
   chunkSize: 1G
-
+  minimalFrequency: 30days
 
 #
 # See https://www.dropwizard.io/en/latest/manual/configuration.html#logging
