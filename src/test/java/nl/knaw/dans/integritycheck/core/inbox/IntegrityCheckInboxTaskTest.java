@@ -18,6 +18,7 @@ package nl.knaw.dans.integritycheck.core.inbox;
 import io.dropwizard.testing.junit5.DAOTestExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import nl.knaw.dans.integritycheck.core.IntegrityCheckTask;
+import nl.knaw.dans.integritycheck.core.IntegrityCheckTaskStatus;
 import nl.knaw.dans.integritycheck.db.IntegrityCheckTaskDao;
 import org.apache.commons.io.FileUtils;
 import org.hibernate.Session;
@@ -131,6 +132,7 @@ class IntegrityCheckInboxTaskTest {
             recentTask.setExpectedSha1("sha1-1");
             recentTask.setCalculatedSha1("sha1-1");
             recentTask.setCalculationTimestamp(OffsetDateTime.now().minusDays(10));
+            recentTask.setStatus(IntegrityCheckTaskStatus.FINISHED);
             integrityCheckTaskDao.save(recentTask);
         });
 
@@ -168,6 +170,7 @@ class IntegrityCheckInboxTaskTest {
             oldTask.setExpectedSha1("sha1-1");
             oldTask.setCalculatedSha1("sha1-1");
             oldTask.setCalculationTimestamp(OffsetDateTime.now().minusDays(40));
+            oldTask.setStatus(IntegrityCheckTaskStatus.FINISHED);
             integrityCheckTaskDao.save(oldTask);
         });
 

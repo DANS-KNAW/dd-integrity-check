@@ -23,6 +23,7 @@ import io.dropwizard.db.PooledDataSourceFactory;
 import io.dropwizard.hibernate.HibernateBundle;
 import io.dropwizard.hibernate.UnitOfWorkAwareProxyFactory;
 import nl.knaw.dans.integritycheck.config.DdIntegrityCheckConfig;
+import nl.knaw.dans.integritycheck.core.IntegrityCheckStartupHandler;
 import nl.knaw.dans.integritycheck.core.IntegrityCheckTask;
 import nl.knaw.dans.integritycheck.core.IntegrityCheckTaskFactory;
 import nl.knaw.dans.integritycheck.core.IntegrityCheckTaskSource;
@@ -32,6 +33,7 @@ import nl.knaw.dans.lib.dataverse.DataverseClient;
 import nl.knaw.dans.lib.util.inbox.Inbox;
 import nl.knaw.dans.lib.util.pollingtaskexec.ExecutorServiceTaskScheduler;
 import nl.knaw.dans.lib.util.pollingtaskexec.PollingTaskExecutor;
+import nl.knaw.dans.lib.util.pollingtaskexec.TaskScheduler;
 import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
 
@@ -83,19 +85,25 @@ public class DdIntegrityCheckApplication extends Application<DdIntegrityCheckCon
         final DataverseClient dataverseClient = config.getDataverse().build(environment, "dataverse");
         final var integrityCheckTaskFactory = new IntegrityCheckTaskFactory(integrityCheckTaskDao, hibernateBundle.getSessionFactory(), dataverseClient, config.getIntegrityCheck());
 
+        final var taskScheduler = new ExecutorServiceTaskScheduler(config.getIntegrityCheck().getTaskExecutor().build(environment));
         final var pollingTaskExecutor = new PollingTaskExecutor<>(
             "integrity-check-executor",
             environment.lifecycle().scheduledExecutorService("integrity-check-executor").build(),
             Duration.ofMillis(config.getIntegrityCheck().getPollingInterval().toMilliseconds()),
             integrityCheckTaskSource,
             integrityCheckTaskFactory,
-            new ExecutorServiceTaskScheduler(config.getIntegrityCheck().getTaskExecutor().build(environment))
+            taskScheduler
         );
 
         final var uowProxyFactory = new UnitOfWorkAwareProxyFactory(hibernateBundle);
 
+        final var startupHandler = new IntegrityCheckStartupHandler(integrityCheckTaskDao, integrityCheckTaskFactory, taskScheduler);
+
         environment.lifecycle().manage(inbox);
         environment.lifecycle().manage(createUnitOfWorkAwareProxy(uowProxyFactory, pollingTaskExecutor));
+        environment.lifecycle().manage(uowProxyFactory.create(IntegrityCheckStartupHandler.class,
+            new Class<?>[] { IntegrityCheckTaskDao.class, IntegrityCheckTaskFactory.class, TaskScheduler.class },
+            new Object[] { integrityCheckTaskDao, integrityCheckTaskFactory, taskScheduler }));
     }
 
     private <R> PollingTaskExecutor<R> createUnitOfWorkAwareProxy(UnitOfWorkAwareProxyFactory uowFactory, PollingTaskExecutor<R> executor) {

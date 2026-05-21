@@ -27,6 +27,11 @@ public class IntegrityCheckTaskSource implements TaskSource<IntegrityCheckTask> 
 
     @Override
     public Optional<IntegrityCheckTask> nextInput() {
-        return integrityCheckTaskDao.findTasksToExecute().stream().findFirst();
+        return integrityCheckTaskDao.findTasksToExecute().stream()
+            .findFirst()
+            .map(task -> {
+                task.setStatus(IntegrityCheckTaskStatus.SCHEDULED);
+                return integrityCheckTaskDao.save(task);
+            });
     }
 }

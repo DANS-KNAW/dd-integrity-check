@@ -18,6 +18,7 @@ package nl.knaw.dans.integritycheck.db;
 import io.dropwizard.testing.junit5.DAOTestExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import nl.knaw.dans.integritycheck.core.IntegrityCheckTask;
+import nl.knaw.dans.integritycheck.core.IntegrityCheckTaskStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,17 +57,32 @@ class IntegrityCheckTaskDaoTest {
     }
 
     @Test
-    void findTasksToExecute_should_return_tasks_without_calculated_sha1() {
+    void findTasksToExecute_should_return_only_tasks_with_status_open() {
         daoTestRule.inTransaction(() -> {
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).expectedSha1("sha-2").calculatedSha1("sha-2").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").status(IntegrityCheckTaskStatus.OPEN).build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).expectedSha1("sha-2").status(IntegrityCheckTaskStatus.FINISHED).calculatedSha1("sha-2").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(3L).expectedSha1("sha-3").status(IntegrityCheckTaskStatus.SCHEDULED).build());
             return null;
         });
 
         List<IntegrityCheckTask> tasks = daoTestRule.inTransaction(() -> integrityCheckTaskDao.findTasksToExecute());
 
         assertThat(tasks).hasSize(1);
-        assertThat(tasks.get(0).getFileId()).isEqualTo(1L);
+        assertThat(tasks).extracting("fileId").containsExactly(1L);
+    }
+
+    @Test
+    void findScheduledTasks_should_return_tasks_with_status_scheduled() {
+        daoTestRule.inTransaction(() -> {
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").status(IntegrityCheckTaskStatus.OPEN).build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).expectedSha1("sha-2").status(IntegrityCheckTaskStatus.SCHEDULED).build());
+            return null;
+        });
+
+        List<IntegrityCheckTask> tasks = daoTestRule.inTransaction(() -> integrityCheckTaskDao.findScheduledTasks());
+
+        assertThat(tasks).hasSize(1);
+        assertThat(tasks.get(0).getFileId()).isEqualTo(2L);
     }
 
     @Test
@@ -77,13 +93,13 @@ class IntegrityCheckTaskDaoTest {
 
         daoTestRule.inTransaction(() -> {
             // Pending task for file-1
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").status(IntegrityCheckTaskStatus.OPEN).build());
             // Recent task for file-1
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").calculatedSha1("sha-1").calculationTimestamp(now).build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").status(IntegrityCheckTaskStatus.FINISHED).calculatedSha1("sha-1").calculationTimestamp(now).build());
             // Old task for file-1 (should NOT be returned)
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").calculatedSha1("sha-1").calculationTimestamp(longAgo).build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").status(IntegrityCheckTaskStatus.FINISHED).calculatedSha1("sha-1").calculationTimestamp(longAgo).build());
             // Pending task for file-2 (should NOT be returned when querying for file-1)
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).expectedSha1("sha-2").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).expectedSha1("sha-2").status(IntegrityCheckTaskStatus.OPEN).build());
             return null;
         });
 

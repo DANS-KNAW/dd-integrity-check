@@ -18,6 +18,8 @@ package nl.knaw.dans.integritycheck.core;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.integritycheck.config.IntegrityCheckConfig;
+import nl.knaw.dans.integritycheck.core.IntegrityCheckTask;
+import nl.knaw.dans.integritycheck.core.IntegrityCheckTaskStatus;
 import nl.knaw.dans.integritycheck.db.IntegrityCheckTaskDao;
 import nl.knaw.dans.lib.dataverse.DataverseClient;
 import nl.knaw.dans.lib.dataverse.DataverseException;
@@ -55,20 +57,47 @@ public class IntegrityCheckExecutorTask implements Runnable {
             try {
                 // Refresh the task within the session
                 IntegrityCheckTask task = integrityCheckTaskDao.findById(integrityCheckTask.getId())
-                    .orElseThrow(() -> new IllegalStateException("Taks not found task ID: " + integrityCheckTask.getId() + " (File ID: " + integrityCheckTask.getFileId() + ")"));
+                    .orElseThrow(() -> new IllegalStateException("Task not found task ID: " + integrityCheckTask.getId() + " (File ID: " + integrityCheckTask.getFileId() + ")"));
 
                 String calculatedSha1 = calculateSha1(task.getFileId());
                 task.setCalculatedSha1(calculatedSha1);
                 task.setCalculationTimestamp(OffsetDateTime.now());
                 task.setMatch(task.getExpectedSha1().equals(calculatedSha1));
+                task.setStatus(IntegrityCheckTaskStatus.FINISHED);
 
                 integrityCheckTaskDao.save(task);
                 transaction.commit();
                 log.info("Checksum calculation finished for file: {}. Match: {}", task.getFileId(), task.getMatch());
             }
             catch (Exception e) {
-                transaction.rollback();
+                if (transaction != null && transaction.isActive()) {
+                    transaction.rollback();
+                }
                 log.error("Error calculating checksum for file: {}", integrityCheckTask.getFileId(), e);
+
+                // Try to set error status in a new transaction
+                try (Session errorSession = sessionFactory.openSession()) {
+                    ManagedSessionContext.bind(errorSession);
+                    Transaction errorTransaction = errorSession.beginTransaction();
+                    try {
+                        IntegrityCheckTask errorTask = integrityCheckTaskDao.findById(integrityCheckTask.getId()).orElse(null);
+                        if (errorTask != null) {
+                            errorTask.setStatus(IntegrityCheckTaskStatus.ERROR);
+                            integrityCheckTaskDao.save(errorTask);
+                        }
+                        errorTransaction.commit();
+                    }
+                    catch (Exception ex) {
+                        errorTransaction.rollback();
+                        log.error("Failed to set ERROR status for task: {}", integrityCheckTask.getId(), ex);
+                    }
+                    finally {
+                        ManagedSessionContext.unbind(sessionFactory);
+                    }
+                }
+                catch (Exception ex) {
+                    log.error("Failed to open session for setting ERROR status", ex);
+                }
             }
             finally {
                 ManagedSessionContext.unbind(sessionFactory);

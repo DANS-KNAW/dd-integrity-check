@@ -18,6 +18,7 @@ package nl.knaw.dans.integritycheck.core.inbox;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.integritycheck.core.IntegrityCheckTask;
+import nl.knaw.dans.integritycheck.core.IntegrityCheckTaskStatus;
 import nl.knaw.dans.integritycheck.db.IntegrityCheckTaskDao;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -69,6 +70,7 @@ public class IntegrityCheckInboxTask implements Runnable {
                         IntegrityCheckTask newTask = new IntegrityCheckTask();
                         newTask.setFileId(fileId);
                         newTask.setExpectedSha1(expectedSha1);
+                        newTask.setStatus(IntegrityCheckTaskStatus.OPEN);
                         integrityCheckTaskDao.save(newTask);
                     }
                     else {

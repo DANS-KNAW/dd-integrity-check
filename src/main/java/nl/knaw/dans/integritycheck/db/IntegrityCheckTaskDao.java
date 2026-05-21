@@ -17,6 +17,7 @@ package nl.knaw.dans.integritycheck.db;
 
 import io.dropwizard.hibernate.AbstractDAO;
 import nl.knaw.dans.integritycheck.core.IntegrityCheckTask;
+import nl.knaw.dans.integritycheck.core.IntegrityCheckTaskStatus;
 import org.hibernate.SessionFactory;
 
 import javax.persistence.criteria.CriteriaBuilder;
@@ -52,7 +53,16 @@ public class IntegrityCheckTaskDao extends AbstractDAO<IntegrityCheckTask> {
         CriteriaBuilder cb = currentSession().getCriteriaBuilder();
         CriteriaQuery<IntegrityCheckTask> cq = cb.createQuery(IntegrityCheckTask.class);
         Root<IntegrityCheckTask> root = cq.from(IntegrityCheckTask.class);
-        cq.where(cb.isNull(root.get("calculatedSha1")));
+        cq.where(cb.equal(root.get("status"), IntegrityCheckTaskStatus.OPEN));
+        cq.orderBy(cb.asc(root.get("creationTimestamp")));
+        return currentSession().createQuery(cq).getResultList();
+    }
+
+    public List<IntegrityCheckTask> findScheduledTasks() {
+        CriteriaBuilder cb = currentSession().getCriteriaBuilder();
+        CriteriaQuery<IntegrityCheckTask> cq = cb.createQuery(IntegrityCheckTask.class);
+        Root<IntegrityCheckTask> root = cq.from(IntegrityCheckTask.class);
+        cq.where(cb.equal(root.get("status"), IntegrityCheckTaskStatus.SCHEDULED));
         cq.orderBy(cb.asc(root.get("creationTimestamp")));
         return currentSession().createQuery(cq).getResultList();
     }
@@ -65,7 +75,7 @@ public class IntegrityCheckTaskDao extends AbstractDAO<IntegrityCheckTask> {
         cq.where(
             cb.equal(root.get("fileId"), fileId),
             cb.or(
-                cb.isNull(root.get("calculatedSha1")),
+                root.get("status").in(IntegrityCheckTaskStatus.OPEN, IntegrityCheckTaskStatus.SCHEDULED),
                 cb.greaterThan(root.get("calculationTimestamp"), minimalCheckTimestamp)
             )
         );

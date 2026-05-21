@@ -43,7 +43,7 @@ class IntegrityCheckTaskSourceTest {
     }
 
     @Test
-    void nextInput_should_return_first_available_task() {
+    void nextInput_should_return_first_available_task_and_mark_it_as_scheduled() {
         daoTestRule.inTransaction(() -> {
             integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
             integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).expectedSha1("sha-2").build());
@@ -54,6 +54,35 @@ class IntegrityCheckTaskSourceTest {
 
         assertThat(task).isPresent();
         assertThat(task.get().getFileId()).isEqualTo(1L);
+        assertThat(task.get().getStatus()).isEqualTo(IntegrityCheckTaskStatus.SCHEDULED);
+
+        // Verify that the next call returns the second task, because first one is now SCHEDULED and nextInput only picks OPEN
+        Optional<IntegrityCheckTask> nextTask = daoTestRule.inTransaction(() -> taskSource.nextInput());
+        assertThat(nextTask).isPresent();
+        assertThat(nextTask.get().getFileId()).isEqualTo(2L);
+        assertThat(nextTask.get().getStatus()).isEqualTo(IntegrityCheckTaskStatus.SCHEDULED);
+
+        // Verify that the next call returns empty because both are SCHEDULED
+        Optional<IntegrityCheckTask> thirdTask = daoTestRule.inTransaction(() -> taskSource.nextInput());
+        assertThat(thirdTask).isEmpty();
+    }
+
+    @Test
+    void nextInput_should_not_return_scheduled_tasks() {
+        daoTestRule.inTransaction(() -> {
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").status(IntegrityCheckTaskStatus.OPEN).build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).expectedSha1("sha-2").status(IntegrityCheckTaskStatus.SCHEDULED).build());
+            return null;
+        });
+
+        Optional<IntegrityCheckTask> task = daoTestRule.inTransaction(() -> taskSource.nextInput());
+
+        assertThat(task).isPresent();
+        assertThat(task.get().getFileId()).isEqualTo(1L);
+        assertThat(task.get().getStatus()).isEqualTo(IntegrityCheckTaskStatus.SCHEDULED);
+
+        Optional<IntegrityCheckTask> nextTask = daoTestRule.inTransaction(() -> taskSource.nextInput());
+        assertThat(nextTask).isEmpty();
     }
 
     @Test
