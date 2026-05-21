@@ -21,16 +21,16 @@ server:
 database:
   driverClass: org.postgresql.Driver
   url: jdbc:postgresql://dev.archaeology.datastations.nl:5432/dd_integrity_check_local_test
-  user: dd_integrity_check
-  password: dd_integrity_check
+  user: dd_integrity_check_local_test
+  password: dd_integrity_check_local_test
   properties:
     charSet: UTF-8
     hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
     hibernate.hbm2ddl.auto: update
 
 dataverse:
-  baseUrl: http://localhost:8080
-  apiKey: 'secret-api-key'
+  baseUrl: https://test.archaeology.datastations.nl
+  apiKey: 'changeme'
 
 integrityCheck:
   inbox: data/inbox
@@ -39,6 +39,13 @@ integrityCheck:
   startBefore: '23:00'
   chunkSize: 1G
   minimalFrequency: 30days
+  pollingInterval: 10ms
+  taskExecutor:
+    nameFormat: "integrity-check-worker-%d"
+    maxQueueSize: 5000
+    minThreads: 3
+    maxThreads: 3
+    keepAliveTime: 60 seconds
 
 #
 # See https://www.dropwizard.io/en/latest/manual/configuration.html#logging
@@ -52,6 +59,8 @@ logging:
       currentLogFilename: /var/opt/dans.knaw.nl/log/dd-integrity-check/dd-integrity-check.log
     - type:  console
       # Used in combination with journald, which already adds the timestamp
-      logFormat: "%-5p %c{0}: %m%n%dwREx"
+      logFormat: "%-5p %c{0} [%t]: %m%n%dwREx"
   loggers:
+    'nl.knaw.dans.integritycheck': DEBUG
+    'nl.knaw.dans.integritycheck.core.inbox.IntegrityCheckInboxTask': INFO
     'org.hibernate.engine.internal.StatisticalLoggingSessionEventListener': 'OFF'
