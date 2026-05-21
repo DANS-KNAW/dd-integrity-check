@@ -41,6 +41,14 @@ integrityCheck:
   startBefore: '06:00'
   chunkSize: 1G
   minimalFrequency: 30days
+  pollingInterval: 1s
+  taskExecutor:
+    nameFormat: "integrity-check-worker-%d"
+    maxQueueSize: 5000
+    minThreads: 3
+    maxThreads: 3
+    keepAliveTime: 60 seconds
+
 
 #
 # See https://www.dropwizard.io/en/latest/manual/configuration.html#logging
@@ -52,8 +60,8 @@ logging:
       archive: false
       timeZone: system
       currentLogFilename: /var/opt/dans.knaw.nl/log/dd-integrity-check/dd-integrity-check.log
-    - type:  console
+    - type: console
       # Used in combination with journald, which already adds the timestamp
       logFormat: "%-5p %c{0}: %m%n%dwREx"
   loggers:
-      'org.hibernate.engine.internal.StatisticalLoggingSessionEventListener': 'OFF'
+    'org.hibernate.engine.internal.StatisticalLoggingSessionEventListener': 'OFF'

@@ -39,7 +39,7 @@ public class IntegrityCheckExecutorTask implements Runnable {
 
     @Override
     public void run() {
-        log.info("Calculating checksum for task: {}", integrityCheckTask.getId());
+        log.info("Calculating checksum for file ID: {}", integrityCheckTask.getFileId());
 
         try (Session session = sessionFactory.openSession()) {
             ManagedSessionContext.bind(session);
@@ -48,7 +48,7 @@ public class IntegrityCheckExecutorTask implements Runnable {
             try {
                 // Refresh the task within the session
                 IntegrityCheckTask task = integrityCheckTaskDao.findById(integrityCheckTask.getId())
-                    .orElseThrow(() -> new IllegalStateException("Task not found: " + integrityCheckTask.getId()));
+                    .orElseThrow(() -> new IllegalStateException("Taks not found task ID: " + integrityCheckTask.getId() + " (File ID: " + integrityCheckTask.getFileId() + ")"));
 
                 String calculatedSha1 = calculateSha1(task.getFileId());
                 task.setCalculatedSha1(calculatedSha1);
@@ -57,11 +57,11 @@ public class IntegrityCheckExecutorTask implements Runnable {
 
                 integrityCheckTaskDao.save(task);
                 transaction.commit();
-                log.info("Checksum calculation finished for task: {}. Match: {}", task.getId(), task.getMatch());
+                log.info("Checksum calculation finished for file: {}. Match: {}", task.getFileId(), task.getMatch());
             }
             catch (Exception e) {
                 transaction.rollback();
-                log.error("Error calculating checksum for task: {}", integrityCheckTask.getId(), e);
+                log.error("Error calculating checksum for file: {}", integrityCheckTask.getFileId(), e);
             }
             finally {
                 ManagedSessionContext.unbind(sessionFactory);

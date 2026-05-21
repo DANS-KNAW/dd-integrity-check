@@ -18,6 +18,7 @@ package nl.knaw.dans.integritycheck.config;
 import io.dropwizard.util.DataSize;
 import io.dropwizard.util.Duration;
 import lombok.Data;
+import nl.knaw.dans.lib.util.ExecutorServiceFactory;
 
 import javax.validation.constraints.NotNull;
 import java.io.File;
@@ -42,4 +43,10 @@ public class IntegrityCheckConfig {
 
     @NotNull
     private Duration minimalFrequency;
+
+    @NotNull
+    private Duration pollingInterval;
+
+    @NotNull
+    private ExecutorServiceFactory taskExecutor;
 }

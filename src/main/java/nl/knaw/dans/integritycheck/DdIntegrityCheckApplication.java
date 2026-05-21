@@ -34,6 +34,8 @@ import nl.knaw.dans.lib.util.pollingtaskexec.PollingTaskExecutor;
 import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
 
+import java.time.Duration;
+
 public class DdIntegrityCheckApplication extends Application<DdIntegrityCheckConfig> {
 
     private final HibernateBundle<DdIntegrityCheckConfig> hibernateBundle = new HibernateBundle<>(IntegrityCheckTask.class) {
@@ -83,9 +85,10 @@ public class DdIntegrityCheckApplication extends Application<DdIntegrityCheckCon
         final var pollingTaskExecutor = new PollingTaskExecutor<>(
             "integrity-check-executor",
             environment.lifecycle().scheduledExecutorService("integrity-check-executor").build(),
-            java.time.Duration.ofMinutes(1), // TODO: make configurable if needed
+            java.time.Duration.ofMillis(config.getIntegrityCheck().getPollingInterval().toMilliseconds()),
             integrityCheckTaskSource,
-            integrityCheckTaskFactory
+            integrityCheckTaskFactory,
+            new nl.knaw.dans.lib.util.pollingtaskexec.ExecutorServiceTaskScheduler(config.getIntegrityCheck().getTaskExecutor().build(environment))
         );
 
         final var uowProxyFactory = new UnitOfWorkAwareProxyFactory(hibernateBundle);
