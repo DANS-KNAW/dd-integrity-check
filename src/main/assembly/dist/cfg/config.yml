@@ -40,6 +40,8 @@ integrityCheck:
   startAfter: '00:00'
   startBefore: '06:00'
   chunkSize: 1G
+  retries: 3
+  waitBetweenRetries: 5s
   minimalFrequency: 30days
   pollingInterval: 1s
   taskExecutor:

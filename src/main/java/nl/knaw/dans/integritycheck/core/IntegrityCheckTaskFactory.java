@@ -16,6 +16,7 @@
 package nl.knaw.dans.integritycheck.core;
 
 import lombok.RequiredArgsConstructor;
+import nl.knaw.dans.integritycheck.config.IntegrityCheckConfig;
 import nl.knaw.dans.integritycheck.db.IntegrityCheckTaskDao;
 import nl.knaw.dans.lib.dataverse.DataverseClient;
 import nl.knaw.dans.lib.util.pollingtaskexec.TaskFactory;
@@ -26,9 +27,10 @@ public class IntegrityCheckTaskFactory implements TaskFactory<IntegrityCheckTask
     private final IntegrityCheckTaskDao integrityCheckTaskDao;
     private final SessionFactory sessionFactory;
     private final DataverseClient dataverseClient;
+    private final IntegrityCheckConfig config;
 
     @Override
     public Runnable create(IntegrityCheckTask record) {
-        return new IntegrityCheckExecutorTask(record, integrityCheckTaskDao, sessionFactory, dataverseClient);
+        return new IntegrityCheckExecutorTask(record, integrityCheckTaskDao, sessionFactory, dataverseClient, config);
     }
 }

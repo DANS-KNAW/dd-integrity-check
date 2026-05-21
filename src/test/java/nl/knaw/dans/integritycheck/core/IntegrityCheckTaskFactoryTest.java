@@ -15,7 +15,9 @@
  */
 package nl.knaw.dans.integritycheck.core;
 
+import nl.knaw.dans.integritycheck.config.IntegrityCheckConfig;
 import nl.knaw.dans.integritycheck.db.IntegrityCheckTaskDao;
+import nl.knaw.dans.lib.dataverse.DataverseClient;
 import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -28,8 +30,9 @@ class IntegrityCheckTaskFactoryTest {
     void create_should_return_IntegrityCheckExecutorTask() {
         var dao = Mockito.mock(IntegrityCheckTaskDao.class);
         var sessionFactory = Mockito.mock(SessionFactory.class);
-        var dataverseClient = Mockito.mock(nl.knaw.dans.lib.dataverse.DataverseClient.class);
-        var factory = new IntegrityCheckTaskFactory(dao, sessionFactory, dataverseClient);
+        var dataverseClient = Mockito.mock(DataverseClient.class);
+        var config = Mockito.mock(IntegrityCheckConfig.class);
+        var factory = new IntegrityCheckTaskFactory(dao, sessionFactory, dataverseClient, config);
         var taskRecord = IntegrityCheckTask.builder().id(1L).fileId(1L).build();
 
         Runnable task = factory.create(taskRecord);

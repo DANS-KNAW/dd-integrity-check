@@ -30,6 +30,7 @@ import nl.knaw.dans.integritycheck.core.inbox.IntegrityCheckInboxTaskFactory;
 import nl.knaw.dans.integritycheck.db.IntegrityCheckTaskDao;
 import nl.knaw.dans.lib.dataverse.DataverseClient;
 import nl.knaw.dans.lib.util.inbox.Inbox;
+import nl.knaw.dans.lib.util.pollingtaskexec.ExecutorServiceTaskScheduler;
 import nl.knaw.dans.lib.util.pollingtaskexec.PollingTaskExecutor;
 import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
@@ -68,7 +69,7 @@ public class DdIntegrityCheckApplication extends Application<DdIntegrityCheckCon
             integrityCheckTaskDao,
             hibernateBundle.getSessionFactory(),
             inboxConfig.getOutbox(),
-            java.time.Duration.ofMillis(inboxConfig.getMinimalFrequency().toMilliseconds())
+            Duration.ofMillis(inboxConfig.getMinimalFrequency().toMilliseconds())
         );
 
         final var inbox = Inbox.builder()
@@ -80,15 +81,15 @@ public class DdIntegrityCheckApplication extends Application<DdIntegrityCheckCon
 
         final var integrityCheckTaskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao);
         final DataverseClient dataverseClient = config.getDataverse().build(environment, "dataverse");
-        final var integrityCheckTaskFactory = new IntegrityCheckTaskFactory(integrityCheckTaskDao, hibernateBundle.getSessionFactory(), dataverseClient);
+        final var integrityCheckTaskFactory = new IntegrityCheckTaskFactory(integrityCheckTaskDao, hibernateBundle.getSessionFactory(), dataverseClient, config.getIntegrityCheck());
 
         final var pollingTaskExecutor = new PollingTaskExecutor<>(
             "integrity-check-executor",
             environment.lifecycle().scheduledExecutorService("integrity-check-executor").build(),
-            java.time.Duration.ofMillis(config.getIntegrityCheck().getPollingInterval().toMilliseconds()),
+            Duration.ofMillis(config.getIntegrityCheck().getPollingInterval().toMilliseconds()),
             integrityCheckTaskSource,
             integrityCheckTaskFactory,
-            new nl.knaw.dans.lib.util.pollingtaskexec.ExecutorServiceTaskScheduler(config.getIntegrityCheck().getTaskExecutor().build(environment))
+            new ExecutorServiceTaskScheduler(config.getIntegrityCheck().getTaskExecutor().build(environment))
         );
 
         final var uowProxyFactory = new UnitOfWorkAwareProxyFactory(hibernateBundle);

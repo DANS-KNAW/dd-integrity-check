@@ -42,6 +42,12 @@ public class IntegrityCheckConfig {
     private DataSize chunkSize;
 
     @NotNull
+    private int retries;
+
+    @NotNull
+    private Duration waitBetweenRetries;
+
+    @NotNull
     private Duration minimalFrequency;
 
     @NotNull

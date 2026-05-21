@@ -17,8 +17,12 @@ package nl.knaw.dans.integritycheck.core;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nl.knaw.dans.integritycheck.config.IntegrityCheckConfig;
 import nl.knaw.dans.integritycheck.db.IntegrityCheckTaskDao;
 import nl.knaw.dans.lib.dataverse.DataverseClient;
+import nl.knaw.dans.lib.dataverse.DataverseException;
+import nl.knaw.dans.lib.dataverse.GetFileRange;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -27,6 +31,8 @@ import org.hibernate.context.internal.ManagedSessionContext;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
 
 @Slf4j
@@ -36,6 +42,7 @@ public class IntegrityCheckExecutorTask implements Runnable {
     private final IntegrityCheckTaskDao integrityCheckTaskDao;
     private final SessionFactory sessionFactory;
     private final DataverseClient dataverseClient;
+    private final IntegrityCheckConfig config;
 
     @Override
     public void run() {
@@ -69,16 +76,53 @@ public class IntegrityCheckExecutorTask implements Runnable {
         }
     }
 
-    private String calculateSha1(Long fileId) throws IOException {
+    private String calculateSha1(Long fileId) throws IOException, DataverseException, InterruptedException {
+        long fileSize = dataverseClient.file(fileId).getMetadata().getData().getDataFile().getFilesize();
+        long chunkSize = config.getChunkSize().toBytes();
+        byte[] buffer = new byte[8192];
+        MessageDigest digest;
         try {
-            return dataverseClient.basicFileAccess(fileId).getFile(response -> {
-                try (InputStream is = response.getEntity().getContent()) {
-                    return DigestUtils.sha1Hex(is);
-                }
-            });
+            digest = MessageDigest.getInstance("SHA-1");
         }
-        catch (Exception e) {
-            throw new IOException("Could not download file with id " + fileId, e);
+        catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-1 not found", e);
+        }
+
+        for (long start = 0; start < fileSize; start += chunkSize) {
+            long end = Math.min(start + chunkSize, fileSize);
+            GetFileRange range = new GetFileRange(start, end - 1);
+            downloadChunkWithRetries(fileId, range, digest, buffer);
+        }
+        return Hex.encodeHexString(digest.digest());
+    }
+
+    private void downloadChunkWithRetries(Long fileId, GetFileRange range, MessageDigest digest, byte[] buffer) throws IOException, InterruptedException {
+        int retries = config.getRetries();
+        long waitBetweenRetries = config.getWaitBetweenRetries().toMilliseconds();
+
+        for (int i = 0; i <= retries; i++) {
+            try {
+                dataverseClient.basicFileAccess(fileId).getFile(range, response -> {
+                    try (InputStream is = response.getEntity().getContent()) {
+                        int read;
+                        while ((read = is.read(buffer)) != -1) {
+                            digest.update(buffer, 0, read);
+                        }
+                    }
+                    catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    return null;
+                });
+                return; // Success, return from retry loop
+            }
+            catch (Exception e) {
+                if (i == retries) {
+                    throw new IOException("Failed to download chunk " + range + " for file " + fileId + " after " + retries + " retries", e);
+                }
+                log.warn("Error downloading chunk {} for file: {}, retry {}/{}. Waiting {}ms", range, fileId, i + 1, retries, waitBetweenRetries, e);
+                Thread.sleep(waitBetweenRetries);
+            }
         }
     }
 }
