@@ -36,7 +36,7 @@
 
     <properties>
         <main-class>nl.knaw.dans.integritycheck.DdIntegrityCheckApplication</main-class>
-        <dd-integrity-check-api.version>0.1.0-SNAPSHOT</dd-integrity-check-api.version>
+        <dans-dataverse-client-lib.version>2.0.0</dans-dataverse-client-lib.version>
     </properties>
 
     <scm>
@@ -53,7 +53,6 @@
         <dependency>
             <groupId>nl.knaw.dans</groupId>
             <artifactId>dans-dataverse-client-lib</artifactId>
-            <version>2.0.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -131,51 +130,6 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
-            <!-- START >>> Uncomment after building the API module
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>compilation-dependencies</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>unpack</goal>
-                        </goals>
-                        <configuration>
-                            <artifactItems>
-                                <artifactItem>
-                                    <groupId>nl.knaw.dans</groupId>
-                                    <artifactId>dd-integrity-check-api</artifactId>
-                                    <version>${dd-integrity-check-api.version}</version>
-                                    <outputDirectory>${project.build.directory}/openapi</outputDirectory>
-                                </artifactItem>
-                            </artifactItems>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.openapitools</groupId>
-                <artifactId>openapi-generator-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>generate-server</id>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-                        <configuration combine.children="override">
-                            <generatorName>jaxrs-spec</generatorName>
-                            <inputSpec>${project.build.directory}/openapi/dd-integrity-check-api.yml</inputSpec>
-                            <apiPackage>nl.knaw.dans.integritycheck.resources</apiPackage>
-                            <modelPackage>nl.knaw.dans.integritycheck.api</modelPackage>
-                            <invokerPackage>nl.knaw.dans.integritycheck.resources</invokerPackage>
-                            <templateDirectory>${project.basedir}/src/main/resources/openapi-generator-templates</templateDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            END <<< Uncomment after building the API module -->
         </plugins>
     </build>
 
