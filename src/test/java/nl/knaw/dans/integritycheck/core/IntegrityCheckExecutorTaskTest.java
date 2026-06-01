@@ -92,8 +92,8 @@ class IntegrityCheckExecutorTaskTest {
         when(response.getData()).thenReturn(fileMeta);
         when(fileApi.getMetadata()).thenReturn(response);
 
-        when(basicFileAccessApi.getFile(any(GetFileRange.class), any(HttpClientResponseHandler.class))).thenAnswer(invocation -> {
-            HttpClientResponseHandler<?> handler = invocation.getArgument(1);
+        when(basicFileAccessApi.getFile(any(GetFileOptions.class), any(GetFileRange.class), any(HttpClientResponseHandler.class))).thenAnswer(invocation -> {
+            HttpClientResponseHandler<?> handler = invocation.getArgument(2);
             ClassicHttpResponse httpResponse = mock(ClassicHttpResponse.class);
             HttpEntity entity = mock(HttpEntity.class);
             when(httpResponse.getEntity()).thenReturn(entity);
@@ -133,8 +133,8 @@ class IntegrityCheckExecutorTaskTest {
         when(response.getData()).thenReturn(fileMeta);
         when(fileApi.getMetadata()).thenReturn(response);
 
-        when(basicFileAccessApi.getFile(any(GetFileRange.class), any(HttpClientResponseHandler.class))).thenAnswer(invocation -> {
-            HttpClientResponseHandler<?> handler = invocation.getArgument(1);
+        when(basicFileAccessApi.getFile(any(GetFileOptions.class), any(GetFileRange.class), any(HttpClientResponseHandler.class))).thenAnswer(invocation -> {
+            HttpClientResponseHandler<?> handler = invocation.getArgument(2);
             ClassicHttpResponse httpResponse = mock(ClassicHttpResponse.class);
             HttpEntity entity = mock(HttpEntity.class);
             when(httpResponse.getEntity()).thenReturn(entity);
@@ -178,10 +178,10 @@ class IntegrityCheckExecutorTaskTest {
 
         // First chunk (bytes 0-9) succeeds
         // Second chunk (bytes 10-19) fails once, then succeeds
-        when(basicFileAccessApi.getFile(any(GetFileRange.class), any(HttpClientResponseHandler.class)))
+        when(basicFileAccessApi.getFile(any(GetFileOptions.class), any(GetFileRange.class), any(HttpClientResponseHandler.class)))
             .thenAnswer(invocation -> {
-                GetFileRange range = invocation.getArgument(0);
-                HttpClientResponseHandler<?> handler = invocation.getArgument(1);
+                GetFileRange range = invocation.getArgument(1);
+                HttpClientResponseHandler<?> handler = invocation.getArgument(2);
                 ClassicHttpResponse httpResponse = mock(ClassicHttpResponse.class);
                 HttpEntity entity = mock(HttpEntity.class);
                 when(httpResponse.getEntity()).thenReturn(entity);
@@ -192,8 +192,8 @@ class IntegrityCheckExecutorTaskTest {
             })
             .thenThrow(new IOException("Failure on second chunk"))
             .thenAnswer(invocation -> {
-                GetFileRange range = invocation.getArgument(0);
-                HttpClientResponseHandler<?> handler = invocation.getArgument(1);
+                GetFileRange range = invocation.getArgument(1);
+                HttpClientResponseHandler<?> handler = invocation.getArgument(2);
                 ClassicHttpResponse httpResponse = mock(ClassicHttpResponse.class);
                 HttpEntity entity = mock(HttpEntity.class);
                 when(httpResponse.getEntity()).thenReturn(entity);
@@ -218,12 +218,12 @@ class IntegrityCheckExecutorTaskTest {
         assertThat(updatedTask.getCalculatedChecksumValue()).isEqualTo(expectedChecksum);
         assertThat(updatedTask.getMatch()).isTrue();
         // 1st chunk (1 call) + 2nd chunk (1 fail + 1 success) = 3 calls
-        Mockito.verify(basicFileAccessApi, Mockito.times(3)).getFile(any(GetFileRange.class), any(HttpClientResponseHandler.class));
+        Mockito.verify(basicFileAccessApi, Mockito.times(3)).getFile(any(GetFileOptions.class), any(GetFileRange.class), any(HttpClientResponseHandler.class));
     }
     @Test
     void run_should_set_status_error_on_failure() throws IOException, DataverseException {
         Long fileId = 1L;
-        when(basicFileAccessApi.getFile(any(GetFileRange.class), any(HttpClientResponseHandler.class))).thenThrow(new IOException("Dataverse failure"));
+        when(basicFileAccessApi.getFile(any(GetFileOptions.class), any(GetFileRange.class), any(HttpClientResponseHandler.class))).thenThrow(new IOException("Dataverse failure"));
 
         IntegrityCheckTask task = daoTestRule.inTransaction(() -> integrityCheckTaskDao.save(IntegrityCheckTask.builder()
             .fileId(fileId)

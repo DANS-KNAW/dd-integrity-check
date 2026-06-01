@@ -23,6 +23,7 @@ import nl.knaw.dans.integritycheck.core.IntegrityCheckTaskStatus;
 import nl.knaw.dans.integritycheck.db.IntegrityCheckTaskDao;
 import nl.knaw.dans.lib.dataverse.DataverseClient;
 import nl.knaw.dans.lib.dataverse.DataverseException;
+import nl.knaw.dans.lib.dataverse.GetFileOptions;
 import nl.knaw.dans.lib.dataverse.GetFileRange;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -138,10 +139,12 @@ public class IntegrityCheckExecutorTask implements Runnable {
     private void downloadChunkWithRetries(Long fileId, GetFileRange range, MessageDigest digest, byte[] buffer) throws IOException, InterruptedException {
         int retries = config.getChecksumCalculation().getDownload().getRetries();
         long waitBetweenRetries = config.getChecksumCalculation().getDownload().getWaitBetweenRetries().toMilliseconds();
+        var options = new GetFileOptions();
+        options.setGbrecs(true);
 
         for (int i = 0; i <= retries; i++) {
             try {
-                dataverseClient.basicFileAccess(fileId).getFile(range, response -> {
+                dataverseClient.basicFileAccess(fileId).getFile(options, range, response -> {
                     try (InputStream is = response.getEntity().getContent()) {
                         int read;
                         while ((read = is.read(buffer)) != -1) {
