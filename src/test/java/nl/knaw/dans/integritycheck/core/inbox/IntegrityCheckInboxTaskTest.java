@@ -61,7 +61,7 @@ class IntegrityCheckInboxTaskTest {
     @Test
     void should_schedule_tasks_from_csv() throws Exception {
         Path csvFile = tempDir.resolve("input.csv");
-        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,SHA1\n1,sha1-1\n2,sha1-2", StandardCharsets.UTF_8);
+        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,FILESIZE,CHECKSUM_TYPE,CHECKSUM_VALUE\n1,100,SHA-1,sha1-1\n2,200,SHA-1,sha1-2", StandardCharsets.UTF_8);
 
         IntegrityCheckInboxTask task = new IntegrityCheckInboxTask(
             csvFile,
@@ -93,12 +93,14 @@ class IntegrityCheckInboxTaskTest {
         daoTestRule.inTransaction(() -> {
             IntegrityCheckTask pendingTask = new IntegrityCheckTask();
             pendingTask.setFileId(1L);
-            pendingTask.setExpectedSha1("old-sha1");
+            pendingTask.setFilesize(100L);
+            pendingTask.setChecksumType("SHA-1");
+            pendingTask.setExpectedChecksumValue("old-sha1");
             integrityCheckTaskDao.save(pendingTask);
         });
 
         Path csvFile = tempDir.resolve("input.csv");
-        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,SHA1\n1,new-sha1", StandardCharsets.UTF_8);
+        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,FILESIZE,CHECKSUM_TYPE,CHECKSUM_VALUE\n1,100,SHA-1,new-sha1", StandardCharsets.UTF_8);
 
         IntegrityCheckInboxTask task = new IntegrityCheckInboxTask(
             csvFile,
@@ -120,7 +122,7 @@ class IntegrityCheckInboxTaskTest {
             session.close();
         }
         assertThat(tasks).hasSize(1);
-        assertThat(tasks.get(0).getExpectedSha1()).isEqualTo("old-sha1");
+        assertThat(tasks.get(0).getExpectedChecksumValue()).isEqualTo("old-sha1");
     }
 
     @Test
@@ -129,15 +131,17 @@ class IntegrityCheckInboxTaskTest {
         daoTestRule.inTransaction(() -> {
             IntegrityCheckTask recentTask = new IntegrityCheckTask();
             recentTask.setFileId(1L);
-            recentTask.setExpectedSha1("sha1-1");
-            recentTask.setCalculatedSha1("sha1-1");
+            recentTask.setFilesize(100L);
+            recentTask.setChecksumType("SHA-1");
+            recentTask.setExpectedChecksumValue("sha1-1");
+            recentTask.setCalculatedChecksumValue("sha1-1");
             recentTask.setCalculationTimestamp(OffsetDateTime.now().minusDays(10));
             recentTask.setStatus(IntegrityCheckTaskStatus.FINISHED);
             integrityCheckTaskDao.save(recentTask);
         });
 
         Path csvFile = tempDir.resolve("input.csv");
-        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,SHA1\n1,sha1-1", StandardCharsets.UTF_8);
+        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,FILESIZE,CHECKSUM_TYPE,CHECKSUM_VALUE\n1,100,SHA-1,sha1-1", StandardCharsets.UTF_8);
 
         IntegrityCheckInboxTask task = new IntegrityCheckInboxTask(
             csvFile,
@@ -167,15 +171,17 @@ class IntegrityCheckInboxTaskTest {
         daoTestRule.inTransaction(() -> {
             IntegrityCheckTask oldTask = new IntegrityCheckTask();
             oldTask.setFileId(1L);
-            oldTask.setExpectedSha1("sha1-1");
-            oldTask.setCalculatedSha1("sha1-1");
+            oldTask.setFilesize(100L);
+            oldTask.setChecksumType("SHA-1");
+            oldTask.setExpectedChecksumValue("sha1-1");
+            oldTask.setCalculatedChecksumValue("sha1-1");
             oldTask.setCalculationTimestamp(OffsetDateTime.now().minusDays(40));
             oldTask.setStatus(IntegrityCheckTaskStatus.FINISHED);
             integrityCheckTaskDao.save(oldTask);
         });
 
         Path csvFile = tempDir.resolve("input.csv");
-        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,SHA1\n1,sha1-1", StandardCharsets.UTF_8);
+        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,FILESIZE,CHECKSUM_TYPE,CHECKSUM_VALUE\n1,100,SHA-1,sha1-1", StandardCharsets.UTF_8);
 
         IntegrityCheckInboxTask task = new IntegrityCheckInboxTask(
             csvFile,
@@ -202,9 +208,9 @@ class IntegrityCheckInboxTaskTest {
     @Test
     void should_schedule_tasks_from_large_csv() throws Exception {
         int totalRecords = 2500;
-        StringBuilder csvContent = new StringBuilder("FILEID,SHA1\n");
+        StringBuilder csvContent = new StringBuilder("FILEID,FILESIZE,CHECKSUM_TYPE,CHECKSUM_VALUE\n");
         for (int i = 0; i < totalRecords; i++) {
-            csvContent.append(i).append(",sha1-").append(i).append("\n");
+            csvContent.append(i).append(",100,SHA-1,sha1-").append(i).append("\n");
         }
 
         Path csvFile = tempDir.resolve("large_input.csv");

@@ -59,10 +59,10 @@ public class IntegrityCheckExecutorTask implements Runnable {
                 IntegrityCheckTask task = integrityCheckTaskDao.findById(integrityCheckTask.getId())
                     .orElseThrow(() -> new IllegalStateException("Task not found task ID: " + integrityCheckTask.getId() + " (File ID: " + integrityCheckTask.getFileId() + ")"));
 
-                String calculatedSha1 = calculateSha1(task.getFileId());
-                task.setCalculatedSha1(calculatedSha1);
+                String calculatedChecksumValue = calculateChecksum(task);
+                task.setCalculatedChecksumValue(calculatedChecksumValue);
                 task.setCalculationTimestamp(OffsetDateTime.now());
-                task.setMatch(task.getExpectedSha1().equals(calculatedSha1));
+                task.setMatch(task.getExpectedChecksumValue().equalsIgnoreCase(calculatedChecksumValue));
                 task.setStatus(IntegrityCheckTaskStatus.FINISHED);
 
                 integrityCheckTaskDao.save(task);
@@ -105,24 +105,34 @@ public class IntegrityCheckExecutorTask implements Runnable {
         }
     }
 
-    private String calculateSha1(Long fileId) throws IOException, DataverseException, InterruptedException {
-        long fileSize = dataverseClient.file(fileId).getMetadata().getData().getDataFile().getFilesize();
+    private String calculateChecksum(IntegrityCheckTask task) throws IOException, InterruptedException {
+        long fileSize = task.getFilesize();
         long chunkSize = config.getChecksumCalculation().getDownload().getChunkSize().toBytes();
         byte[] buffer = new byte[8192];
         MessageDigest digest;
         try {
-            digest = MessageDigest.getInstance("SHA-1");
+            digest = MessageDigest.getInstance(getAlgorithm(task.getChecksumType()));
         }
         catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-1 not found", e);
+            throw new RuntimeException("Algorithm not found for checksum type: " + task.getChecksumType(), e);
         }
 
         for (long start = 0; start < fileSize; start += chunkSize) {
             long end = Math.min(start + chunkSize, fileSize);
             GetFileRange range = new GetFileRange(start, end - 1);
-            downloadChunkWithRetries(fileId, range, digest, buffer);
+            downloadChunkWithRetries(task.getFileId(), range, digest, buffer);
         }
         return Hex.encodeHexString(digest.digest());
+    }
+
+    private String getAlgorithm(String checksumType) {
+        return switch (checksumType.toUpperCase()) {
+            case "MD5" -> "MD5";
+            case "SHA-1", "SHA1" -> "SHA-1";
+            case "SHA-256", "SHA256" -> "SHA-256";
+            case "SHA-512", "SHA512" -> "SHA-512";
+            default -> throw new IllegalArgumentException("Unsupported checksum type: " + checksumType);
+        };
     }
 
     private void downloadChunkWithRetries(Long fileId, GetFileRange range, MessageDigest digest, byte[] buffer) throws IOException, InterruptedException {

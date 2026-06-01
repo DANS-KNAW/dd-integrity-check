@@ -81,7 +81,7 @@ class IntegrityCheckExecutorTaskTest {
     @SuppressWarnings("unchecked")
     void run_should_calculate_checksum_and_update_task() throws IOException, DataverseException {
         String content = "test content";
-        String expectedSha1 = DigestUtils.sha1Hex(content.getBytes(StandardCharsets.UTF_8));
+        String expectedChecksum = DigestUtils.sha1Hex(content.getBytes(StandardCharsets.UTF_8));
         Long fileId = 1L;
 
         DataFile dataFile = new DataFile();
@@ -103,7 +103,9 @@ class IntegrityCheckExecutorTaskTest {
 
         IntegrityCheckTask task = daoTestRule.inTransaction(() -> integrityCheckTaskDao.save(IntegrityCheckTask.builder()
             .fileId(fileId)
-            .expectedSha1(expectedSha1)
+            .filesize((long) content.length())
+            .checksumType("SHA-1")
+            .expectedChecksumValue(expectedChecksum)
             .build()));
 
         var executorTask = new IntegrityCheckExecutorTask(task, integrityCheckTaskDao, daoTestRule.getSessionFactory(), dataverseClient, config);
@@ -111,7 +113,7 @@ class IntegrityCheckExecutorTaskTest {
 
         IntegrityCheckTask updatedTask = daoTestRule.getSessionFactory().openSession().get(IntegrityCheckTask.class, task.getId());
 
-        assertThat(updatedTask.getCalculatedSha1()).isEqualTo(expectedSha1);
+        assertThat(updatedTask.getCalculatedChecksumValue()).isEqualTo(expectedChecksum);
         assertThat(updatedTask.getCalculationTimestamp()).isNotNull();
         assertThat(updatedTask.getMatch()).isTrue();
         assertThat(updatedTask.getStatus()).isEqualTo(IntegrityCheckTaskStatus.FINISHED);
@@ -142,7 +144,9 @@ class IntegrityCheckExecutorTaskTest {
 
         IntegrityCheckTask task = daoTestRule.inTransaction(() -> integrityCheckTaskDao.save(IntegrityCheckTask.builder()
             .fileId(fileId)
-            .expectedSha1("wrong-sha1")
+            .filesize(10L)
+            .checksumType("SHA-1")
+            .expectedChecksumValue("wrong-sha1")
             .build()));
 
         var executorTask = new IntegrityCheckExecutorTask(task, integrityCheckTaskDao, daoTestRule.getSessionFactory(), dataverseClient, config);
@@ -158,7 +162,7 @@ class IntegrityCheckExecutorTaskTest {
     @SuppressWarnings("unchecked")
     void run_should_retry_on_per_chunk_failure() throws IOException, DataverseException {
         String content = "test content chunked";
-        String expectedSha1 = DigestUtils.sha1Hex(content.getBytes(StandardCharsets.UTF_8));
+        String expectedChecksum = DigestUtils.sha1Hex(content.getBytes(StandardCharsets.UTF_8));
         Long fileId = 1L;
 
         // Set chunk size small enough to have at least 2 chunks
@@ -201,7 +205,9 @@ class IntegrityCheckExecutorTaskTest {
 
         IntegrityCheckTask task = daoTestRule.inTransaction(() -> integrityCheckTaskDao.save(IntegrityCheckTask.builder()
             .fileId(fileId)
-            .expectedSha1(expectedSha1)
+            .filesize((long) content.length())
+            .checksumType("SHA-1")
+            .expectedChecksumValue(expectedChecksum)
             .build()));
 
         var executorTask = new IntegrityCheckExecutorTask(task, integrityCheckTaskDao, daoTestRule.getSessionFactory(), dataverseClient, config);
@@ -209,7 +215,7 @@ class IntegrityCheckExecutorTaskTest {
 
         IntegrityCheckTask updatedTask = daoTestRule.getSessionFactory().openSession().get(IntegrityCheckTask.class, task.getId());
 
-        assertThat(updatedTask.getCalculatedSha1()).isEqualTo(expectedSha1);
+        assertThat(updatedTask.getCalculatedChecksumValue()).isEqualTo(expectedChecksum);
         assertThat(updatedTask.getMatch()).isTrue();
         // 1st chunk (1 call) + 2nd chunk (1 fail + 1 success) = 3 calls
         Mockito.verify(basicFileAccessApi, Mockito.times(3)).getFile(any(GetFileRange.class), any(HttpClientResponseHandler.class));
@@ -217,11 +223,13 @@ class IntegrityCheckExecutorTaskTest {
     @Test
     void run_should_set_status_error_on_failure() throws IOException, DataverseException {
         Long fileId = 1L;
-        when(fileApi.getMetadata()).thenThrow(new RuntimeException("Dataverse failure"));
+        when(basicFileAccessApi.getFile(any(GetFileRange.class), any(HttpClientResponseHandler.class))).thenThrow(new IOException("Dataverse failure"));
 
         IntegrityCheckTask task = daoTestRule.inTransaction(() -> integrityCheckTaskDao.save(IntegrityCheckTask.builder()
             .fileId(fileId)
-            .expectedSha1("some-sha1")
+            .filesize(10L)
+            .checksumType("SHA-1")
+            .expectedChecksumValue("some-sha1")
             .build()));
 
         var executorTask = new IntegrityCheckExecutorTask(task, integrityCheckTaskDao, daoTestRule.getSessionFactory(), dataverseClient, config);

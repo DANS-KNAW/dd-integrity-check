@@ -57,8 +57,8 @@ class IntegrityCheckTaskSourceTest {
     @Test
     void nextInput_should_return_first_available_task_and_mark_it_as_scheduled() {
         daoTestRule.inTransaction(() -> {
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).expectedSha1("sha-2").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-2").build());
             return null;
         });
 
@@ -82,8 +82,8 @@ class IntegrityCheckTaskSourceTest {
     @Test
     void nextInput_should_not_return_scheduled_tasks() {
         daoTestRule.inTransaction(() -> {
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").status(IntegrityCheckTaskStatus.OPEN).build());
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).expectedSha1("sha-2").status(IntegrityCheckTaskStatus.SCHEDULED).build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").status(IntegrityCheckTaskStatus.OPEN).build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-2").status(IntegrityCheckTaskStatus.SCHEDULED).build());
             return null;
         });
 
@@ -110,7 +110,7 @@ class IntegrityCheckTaskSourceTest {
         when(schedulingConfig.getStartBefore()).thenReturn(LocalTime.now().plusHours(2));
 
         daoTestRule.inTransaction(() -> {
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").build());
             return null;
         });
 
@@ -124,7 +124,7 @@ class IntegrityCheckTaskSourceTest {
         when(schedulingConfig.getStartBefore()).thenReturn(LocalTime.now().minusHours(1));
 
         daoTestRule.inTransaction(() -> {
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").build());
             return null;
         });
 
@@ -138,7 +138,7 @@ class IntegrityCheckTaskSourceTest {
         when(schedulingConfig.getStartBefore()).thenReturn(LocalTime.now().plusHours(1));
 
         daoTestRule.inTransaction(() -> {
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").build());
             return null;
         });
 
@@ -157,7 +157,7 @@ class IntegrityCheckTaskSourceTest {
         taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, schedulingConfig, clock);
 
         daoTestRule.inTransaction(() -> {
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").build());
             return null;
         });
 
@@ -176,7 +176,7 @@ class IntegrityCheckTaskSourceTest {
         taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, schedulingConfig, clock);
 
         daoTestRule.inTransaction(() -> {
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").build());
             return null;
         });
 
@@ -195,7 +195,7 @@ class IntegrityCheckTaskSourceTest {
         taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, schedulingConfig, clock);
 
         daoTestRule.inTransaction(() -> {
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).expectedSha1("sha-1").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").build());
             return null;
         });
 

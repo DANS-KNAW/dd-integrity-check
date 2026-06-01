@@ -35,12 +35,26 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoField;
 import java.util.List;
 
 @Slf4j
 @RequiredArgsConstructor
 public class IntegrityCheckInboxTask implements Runnable {
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = new DateTimeFormatterBuilder()
+        .appendOptional(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+        .appendOptional(new DateTimeFormatterBuilder()
+            .appendPattern("yyyy-MM-dd HH:mm:ss")
+            .appendFraction(ChronoField.MILLI_OF_SECOND, 0, 3, true)
+            .toFormatter())
+        .toFormatter();
+
     private final Path path;
     private final IntegrityCheckTaskDao integrityCheckTaskDao;
     private final SessionFactory sessionFactory;
@@ -61,7 +75,11 @@ public class IntegrityCheckInboxTask implements Runnable {
                 Transaction transaction = session.beginTransaction();
                 try {
                     Long fileId = Long.parseLong(record.get("FILEID"));
-                    String expectedSha1 = record.get("SHA1");
+                    String datasetPid = record.isMapped("DATASET_PID") ? record.get("DATASET_PID") : null;
+                    LocalDateTime publicationTimestamp = record.isMapped("PUBLICATION_TIMESTAMP") ? LocalDateTime.parse(record.get("PUBLICATION_TIMESTAMP"), DATE_TIME_FORMATTER) : null;
+                    Long filesize = Long.parseLong(record.get("FILESIZE"));
+                    String checksumType = record.get("CHECKSUM_TYPE");
+                    String expectedChecksumValue = record.get("CHECKSUM_VALUE");
 
                     List<IntegrityCheckTask> existingTasks = integrityCheckTaskDao.findPendingOrRecentTasks(fileId, minimalCheckTimestamp);
 
@@ -69,7 +87,11 @@ public class IntegrityCheckInboxTask implements Runnable {
                         log.debug("Scheduling new integrity check task for fileId: {}", fileId);
                         IntegrityCheckTask newTask = new IntegrityCheckTask();
                         newTask.setFileId(fileId);
-                        newTask.setExpectedSha1(expectedSha1);
+                        newTask.setDatasetPid(datasetPid);
+                        newTask.setPublicationTimestamp(publicationTimestamp);
+                        newTask.setFilesize(filesize);
+                        newTask.setChecksumType(checksumType);
+                        newTask.setExpectedChecksumValue(expectedChecksumValue);
                         newTask.setStatus(IntegrityCheckTaskStatus.OPEN);
                         integrityCheckTaskDao.save(newTask);
                     }

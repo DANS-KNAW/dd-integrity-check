@@ -29,6 +29,7 @@ import javax.persistence.Id;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.Table;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -51,11 +52,23 @@ public class IntegrityCheckTask {
     @Column(name = "file_id", nullable = false)
     private Long fileId;
 
-    @Column(name = "expected_sha1", nullable = false)
-    private String expectedSha1;
+    @Column(name = "dataset_pid")
+    private String datasetPid;
 
-    @Column(name = "calculated_sha1")
-    private String calculatedSha1;
+    @Column(name = "publication_timestamp")
+    private LocalDateTime publicationTimestamp;
+
+    @Column(name = "filesize", nullable = false)
+    private Long filesize;
+
+    @Column(name = "checksum_type", nullable = false)
+    private String checksumType;
+
+    @Column(name = "expected_checksum_value", nullable = false)
+    private String expectedChecksumValue;
+
+    @Column(name = "calculated_checksum_value")
+    private String calculatedChecksumValue;
 
     @Column(name = "calculation_timestamp")
     private OffsetDateTime calculationTimestamp;
