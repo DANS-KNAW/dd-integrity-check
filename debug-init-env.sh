@@ -19,3 +19,7 @@ echo -n "Pre-creating log..."
 TEMPDIR=data
 touch $TEMPDIR/dd-integrity-check.log
 echo "OK"
+echo -n "Creating inbox and outbox..."
+mkdir -p $TEMPDIR/inbox
+mkdir -p $TEMPDIR/outbox
+echo "OK"

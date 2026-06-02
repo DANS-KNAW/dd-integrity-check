@@ -38,9 +38,6 @@ integrityCheck:
     inbox: data/inbox
     outbox: data/outbox
     minimalFrequency: 30days
-    scheduling:
-      startAfter: '06:00'
-      startBefore: '23:00'
   checksumCalculation:
     pollingInterval: 10ms
     scheduling:
@@ -66,7 +63,7 @@ logging:
     - type: file
       archive: false
       timeZone: system
-      currentLogFilename: /var/opt/dans.knaw.nl/log/dd-integrity-check/dd-integrity-check.log
+      currentLogFilename: data/dd-integrity-check.log
     - type:  console
       # Used in combination with journald, which already adds the timestamp
       logFormat: "%-5p %c{0} [%t]: %m%n%dwREx"
