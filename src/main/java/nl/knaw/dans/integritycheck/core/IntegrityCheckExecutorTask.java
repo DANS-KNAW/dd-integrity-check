@@ -141,6 +141,7 @@ public class IntegrityCheckExecutorTask implements Runnable {
         long waitBetweenRetries = config.getChecksumCalculation().getDownload().getWaitBetweenRetries().toMilliseconds();
         var options = new GetFileOptions();
         options.setGbrecs(true);
+        options.setFormat("original"); // Otherwise, for tab-ingested files the .tab version will be downloaded, which will have a different checksum than the original file
 
         for (int i = 0; i <= retries; i++) {
             try {
