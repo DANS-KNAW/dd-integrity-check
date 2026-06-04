@@ -44,9 +44,10 @@ integrityCheck:
       startAfter: '00:00'
       startBefore: '06:00'
     download:
-      chunkSize: 1G
-      retries: 3
-      waitBetweenRetries: 5s
+      # N.B. the service will use in-memory buffers to read the chunks, so do not set this too high.
+      chunkSize: 128Mb
+      retries: 20
+      waitBetweenRetries: 10s
     taskExecutor:
       nameFormat: "integrity-check-worker-%d"
       maxQueueSize: 5000

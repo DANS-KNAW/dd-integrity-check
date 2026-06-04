@@ -40,6 +40,6 @@ class DdIntegrityCheckConfigTest {
 
         assertThat(config.getIntegrityCheck()).isNotNull();
         assertThat(config.getIntegrityCheck().getFileRecords().getMinimalFrequency()).isEqualTo(Duration.days(30));
-        assertThat(config.getIntegrityCheck().getChecksumCalculation().getDownload().getChunkSize().toGigabytes()).isEqualTo(1);
+        assertThat(config.getIntegrityCheck().getChecksumCalculation().getDownload().getChunkSize().toMegabytes()).isEqualTo(128);
     }
 }

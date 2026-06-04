@@ -18,15 +18,11 @@ package nl.knaw.dans.integritycheck.core;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.knaw.dans.integritycheck.config.IntegrityCheckConfig;
-import nl.knaw.dans.integritycheck.core.IntegrityCheckTask;
-import nl.knaw.dans.integritycheck.core.IntegrityCheckTaskStatus;
 import nl.knaw.dans.integritycheck.db.IntegrityCheckTaskDao;
 import nl.knaw.dans.lib.dataverse.DataverseClient;
-import nl.knaw.dans.lib.dataverse.DataverseException;
 import nl.knaw.dans.lib.dataverse.GetFileOptions;
 import nl.knaw.dans.lib.dataverse.GetFileRange;
 import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -109,7 +105,7 @@ public class IntegrityCheckExecutorTask implements Runnable {
     private String calculateChecksum(IntegrityCheckTask task) throws IOException, InterruptedException {
         long fileSize = task.getFilesize();
         long chunkSize = config.getChecksumCalculation().getDownload().getChunkSize().toBytes();
-        byte[] buffer = new byte[8192];
+        byte[] buffer = new byte[(int) chunkSize]; // chunkSize is restricted to < 500Mb, so it will fit in an integer
         MessageDigest digest;
         try {
             digest = MessageDigest.getInstance(getAlgorithm(task.getChecksumType()));
@@ -147,10 +143,17 @@ public class IntegrityCheckExecutorTask implements Runnable {
             try {
                 dataverseClient.basicFileAccess(fileId).getFile(options, range, response -> {
                     try (InputStream is = response.getEntity().getContent()) {
+                        int totalRead = 0;
                         int read;
-                        while ((read = is.read(buffer)) != -1) {
-                            digest.update(buffer, 0, read);
+                        int remaining = buffer.length;
+                        while ((read = is.read(buffer, totalRead, remaining)) != -1) {
+                            totalRead += read;
+                            remaining = buffer.length - totalRead;
+                            if (remaining == 0) {
+                                break;
+                            }
                         }
+                        digest.update(buffer, 0, totalRead);
                     }
                     catch (IOException e) {
                         throw new RuntimeException(e);

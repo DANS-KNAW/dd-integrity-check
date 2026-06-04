@@ -16,7 +16,9 @@
 package nl.knaw.dans.integritycheck.config;
 
 import io.dropwizard.util.DataSize;
+import io.dropwizard.util.DataSizeUnit;
 import io.dropwizard.util.Duration;
+import io.dropwizard.validation.MaxDataSize;
 import lombok.Data;
 
 import javax.validation.constraints.NotNull;
@@ -24,6 +26,7 @@ import javax.validation.constraints.NotNull;
 @Data
 public class DownloadConfig {
     @NotNull
+    @MaxDataSize(value = 500, unit = DataSizeUnit.MEGABYTES, message = "chunk size must be less than 500MB")
     private DataSize chunkSize;
 
     @NotNull

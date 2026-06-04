@@ -44,7 +44,7 @@ integrityCheck:
       startAfter: '06:00'
       startBefore: '23:00'
     download:
-      chunkSize: 1G
+      chunkSize: 128Mb
       retries: 3
       waitBetweenRetries: 5s
     taskExecutor:
