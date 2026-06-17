@@ -23,6 +23,17 @@ database:
   url: jdbc:postgresql://localhost:5432/dd_integrity_check
   user: dd_integrity_check
   password: dd_integrity_check
+  # N.B. We are logging validation errors, but since connections are validated before being used, automatic recovery
+  # should still work, so don't get spooked by the error messages in the log when postgresql is restarted.
+  logValidationErrors: true
+  validationQuery: "SELECT 1"
+  validationQueryTimeout: 3s
+  checkConnectionWhileIdle: true
+  checkConnectionOnConnect: true
+  checkConnectionOnReturn: true
+  checkConnectionOnBorrow: true
+  evictionInterval: 10s
+  minIdleTime: 1 minute
   properties:
     charSet: UTF-8
     hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
