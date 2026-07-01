@@ -72,3 +72,11 @@ logging:
     'nl.knaw.dans.integritycheck': DEBUG
     'nl.knaw.dans.integritycheck.core.inbox.IntegrityCheckInboxTask': INFO
     'org.hibernate.engine.internal.StatisticalLoggingSessionEventListener': 'OFF'
+    'audit-log':
+      additive: false
+      appenders:
+        - type: file
+          archive: false
+          timeZone: system
+          currentLogFilename: data/dd-integrity-check-tasks.log
+          logFormat: "%d{ISO8601} %m%n"

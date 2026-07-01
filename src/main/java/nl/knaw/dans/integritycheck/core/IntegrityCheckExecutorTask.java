@@ -27,6 +27,8 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.context.internal.ManagedSessionContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,6 +39,8 @@ import java.time.OffsetDateTime;
 @Slf4j
 @RequiredArgsConstructor
 public class IntegrityCheckExecutorTask implements Runnable {
+
+    private static final Logger auditLog = LoggerFactory.getLogger("audit-log");
     private final IntegrityCheckTask integrityCheckTask;
     private final IntegrityCheckTaskDao integrityCheckTaskDao;
     private final SessionFactory sessionFactory;
@@ -65,12 +69,17 @@ public class IntegrityCheckExecutorTask implements Runnable {
                 integrityCheckTaskDao.save(task);
                 transaction.commit();
                 log.info("Checksum calculation finished for file: {}. Match: {}", task.getFileId(), task.getMatch());
+                auditLog.info("file_id={} dataset_pid={} filesize={} checksum_type={} expected={} calculated={} match={} timestamp={}",
+                    task.getFileId(), task.getDatasetPid(), task.getFilesize(), task.getChecksumType(),
+                    task.getExpectedChecksumValue(), task.getCalculatedChecksumValue(),
+                    task.getMatch(), task.getCalculationTimestamp());
             }
             catch (Exception e) {
                 if (transaction != null && transaction.isActive()) {
                     transaction.rollback();
                 }
                 log.error("Error calculating checksum for file: {}", integrityCheckTask.getFileId(), e);
+                auditLog.error("file_id={} error={}", integrityCheckTask.getFileId(), e.getMessage());
 
                 // Try to set error status in a new transaction
                 try (Session errorSession = sessionFactory.openSession()) {

@@ -82,3 +82,11 @@ logging:
       logFormat: "%-5p %c{0} [%t]: %m%n%dwREx"
   loggers:
     'org.hibernate.engine.internal.StatisticalLoggingSessionEventListener': 'OFF'
+    'audit-log':
+      additive: false
+      appenders:
+        - type: file
+          archive: false
+          timeZone: system
+          currentLogFilename: /var/opt/dans.knaw.nl/log/dd-integrity-check/audit.log
+          logFormat: "%d{ISO8601} %m%n"
