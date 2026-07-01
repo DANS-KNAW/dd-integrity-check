@@ -54,6 +54,7 @@ integrityCheck:
     scheduling:
       startAfter: '00:00'
       startBefore: '06:00'
+      batchSize: 10
     download:
       # N.B. the service will use in-memory buffers to read the chunks, so do not set this too high.
       chunkSize: 128Mb

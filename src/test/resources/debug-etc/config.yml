@@ -43,6 +43,7 @@ integrityCheck:
     scheduling:
       startAfter: '06:00'
       startBefore: '23:00'
+      batchSize: 10
     download:
       chunkSize: 128Mb
       retries: 3

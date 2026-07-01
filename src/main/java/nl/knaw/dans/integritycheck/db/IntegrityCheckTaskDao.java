@@ -58,7 +58,7 @@ public class IntegrityCheckTaskDao extends AbstractDAO<IntegrityCheckTask> {
     }
 
     /**
-     * Selects the single task that is most overdue for a checksum calculation, or empty if none is eligible.
+     * Selects up to {@code maxResults} tasks that are most overdue for a checksum calculation.
      * <p>
      * A task is eligible when it is not currently being processed ({@code status != SCHEDULED}) and either has never
      * been calculated ({@code calculationTimestamp} is null) or was last calculated before {@code threshold}. Eligible
@@ -67,9 +67,10 @@ public class IntegrityCheckTaskDao extends AbstractDAO<IntegrityCheckTask> {
      * compete purely on how long they have been waiting, so neither class is starved. The id is a deterministic
      * tie-break for tasks sharing the same coalesced timestamp (e.g. many rows created from one large CSV).
      *
-     * @param threshold tasks calculated before this instant become eligible again (typically {@code now - minimalFrequency})
+     * @param threshold  tasks calculated before this instant become eligible again (typically {@code now - minimalFrequency})
+     * @param maxResults maximum number of tasks to return
      */
-    public Optional<IntegrityCheckTask> findNextExecutableTask(OffsetDateTime threshold) {
+    public List<IntegrityCheckTask> findNextExecutableTasks(OffsetDateTime threshold, int maxResults) {
         CriteriaBuilder cb = currentSession().getCriteriaBuilder();
         CriteriaQuery<IntegrityCheckTask> cq = cb.createQuery(IntegrityCheckTask.class);
         Root<IntegrityCheckTask> root = cq.from(IntegrityCheckTask.class);
@@ -86,7 +87,7 @@ public class IntegrityCheckTaskDao extends AbstractDAO<IntegrityCheckTask> {
             cb.asc(root.get("id"))
         );
 
-        return currentSession().createQuery(cq).setMaxResults(1).uniqueResultOptional();
+        return currentSession().createQuery(cq).setMaxResults(maxResults).getResultList();
     }
 
     public List<IntegrityCheckTask> findScheduledTasks() {

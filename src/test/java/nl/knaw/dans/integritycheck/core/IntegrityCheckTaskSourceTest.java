@@ -30,6 +30,7 @@ import java.time.Instant;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,9 +53,10 @@ class IntegrityCheckTaskSourceTest {
     void setUp() {
         integrityCheckTaskDao = new IntegrityCheckTaskDao(daoTestRule.getSessionFactory());
         schedulingConfig = Mockito.mock(SchedulingConfig.class);
-        // Default to always open window
+        // Default to always open window with batch size 1
         when(schedulingConfig.getStartAfter()).thenReturn(LocalTime.MIN);
         when(schedulingConfig.getStartBefore()).thenReturn(LocalTime.MAX);
+        when(schedulingConfig.getBatchSize()).thenReturn(1);
         taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, schedulingConfig, MINIMAL_FREQUENCY);
     }
 
@@ -233,5 +235,58 @@ class IntegrityCheckTaskSourceTest {
 
         Optional<IntegrityCheckTask> task = daoTestRule.inTransaction(() -> taskSource.nextInput());
         assertThat(task).isEmpty();
+    }
+
+    @Test
+    void nextInputs_should_return_multiple_tasks_up_to_batch_size_and_mark_them_scheduled() {
+        when(schedulingConfig.getBatchSize()).thenReturn(3);
+        daoTestRule.inTransaction(() -> {
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-2").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(3L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-3").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(4L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-4").build());
+            return null;
+        });
+
+        List<IntegrityCheckTask> tasks = daoTestRule.inTransaction(() -> taskSource.nextInputs());
+
+        assertThat(tasks).hasSize(3);
+        assertThat(tasks).extracting(IntegrityCheckTask::getFileId).containsExactly(1L, 2L, 3L);
+        assertThat(tasks).extracting(IntegrityCheckTask::getStatus).containsOnly(IntegrityCheckTaskStatus.SCHEDULED);
+
+        // The 4th task is still available in the next batch
+        List<IntegrityCheckTask> nextBatch = daoTestRule.inTransaction(() -> taskSource.nextInputs());
+        assertThat(nextBatch).hasSize(1);
+        assertThat(nextBatch.get(0).getFileId()).isEqualTo(4L);
+    }
+
+    @Test
+    void nextInputs_should_return_empty_list_if_outside_window() {
+        when(schedulingConfig.getStartAfter()).thenReturn(LocalTime.now().plusHours(1));
+        when(schedulingConfig.getStartBefore()).thenReturn(LocalTime.now().plusHours(2));
+        when(schedulingConfig.getBatchSize()).thenReturn(3);
+
+        daoTestRule.inTransaction(() -> {
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").build());
+            return null;
+        });
+
+        List<IntegrityCheckTask> tasks = daoTestRule.inTransaction(() -> taskSource.nextInputs());
+        assertThat(tasks).isEmpty();
+    }
+
+    @Test
+    void nextInputs_should_return_fewer_tasks_than_batch_size_when_queue_is_short() {
+        when(schedulingConfig.getBatchSize()).thenReturn(5);
+        daoTestRule.inTransaction(() -> {
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-2").build());
+            return null;
+        });
+
+        List<IntegrityCheckTask> tasks = daoTestRule.inTransaction(() -> taskSource.nextInputs());
+
+        assertThat(tasks).hasSize(2);
+        assertThat(tasks).extracting(IntegrityCheckTask::getStatus).containsOnly(IntegrityCheckTaskStatus.SCHEDULED);
     }
 }

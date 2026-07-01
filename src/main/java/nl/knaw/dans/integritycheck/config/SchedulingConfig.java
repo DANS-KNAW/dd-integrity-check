@@ -17,6 +17,7 @@ package nl.knaw.dans.integritycheck.config;
 
 import lombok.Data;
 
+import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import java.time.LocalTime;
 
@@ -27,4 +28,7 @@ public class SchedulingConfig {
 
     @NotNull
     private LocalTime startBefore;
+
+    @Min(1)
+    private int batchSize = 1;
 }

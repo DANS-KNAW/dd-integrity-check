@@ -24,6 +24,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @RequiredArgsConstructor
@@ -38,18 +39,22 @@ public class IntegrityCheckTaskSource implements TaskSource<IntegrityCheckTask> 
     }
 
     @Override
-    public Optional<IntegrityCheckTask> nextInput() {
+    public List<IntegrityCheckTask> nextInputs() {
         if (isOutsideWindow()) {
-            return Optional.empty();
+            return List.of();
         }
+        var threshold = OffsetDateTime.now(clock).minus(minimalFrequency);
+        var tasks = integrityCheckTaskDao.findNextExecutableTasks(threshold, schedulingConfig.getBatchSize());
+        tasks.forEach(task -> {
+            task.setStatus(IntegrityCheckTaskStatus.SCHEDULED);
+            integrityCheckTaskDao.save(task);
+        });
+        return tasks;
+    }
 
-        // A file is due for a (re)check when it was never checked or last checked longer ago than minimalFrequency.
-        OffsetDateTime threshold = OffsetDateTime.now(clock).minus(minimalFrequency);
-        return integrityCheckTaskDao.findNextExecutableTask(threshold)
-            .map(task -> {
-                task.setStatus(IntegrityCheckTaskStatus.SCHEDULED);
-                return integrityCheckTaskDao.save(task);
-            });
+    @Override
+    public Optional<IntegrityCheckTask> nextInput() {
+        return nextInputs().stream().findFirst();
     }
 
     private boolean isOutsideWindow() {
