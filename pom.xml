@@ -36,7 +36,7 @@
     <properties>
         <main-class>nl.knaw.dans.integritycheck.DdIntegrityCheckApplication</main-class>
         <dans-dataverse-client-lib.version>2.1.1</dans-dataverse-client-lib.version>
-        <dans-java-utils.version>4.0.1-SNAPSHOT</dans-java-utils.version>
+        <dans-java-utils.version>4.1.0</dans-java-utils.version>
     </properties>
 
     <scm>
