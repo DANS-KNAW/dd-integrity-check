@@ -26,14 +26,25 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.Index;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "integrity_check_task")
+@Table(
+    name = "integrity_check_task",
+    // One task record per file: the task is reused across check cycles instead of being recreated.
+    uniqueConstraints = @UniqueConstraint(name = "uq_ict_file_id", columnNames = "file_id"),
+    indexes = {
+        // Supports the task source's selection query (see IntegrityCheckTaskDao.findNextExecutableTask).
+        @Index(name = "ix_ict_status_calc", columnList = "status, calculation_timestamp"),
+        @Index(name = "ix_ict_creation", columnList = "creation_timestamp")
+    }
+)
 @Data
 @Builder
 @NoArgsConstructor

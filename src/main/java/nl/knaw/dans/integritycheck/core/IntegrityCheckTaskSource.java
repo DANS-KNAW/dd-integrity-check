@@ -21,17 +21,20 @@ import nl.knaw.dans.integritycheck.db.IntegrityCheckTaskDao;
 import nl.knaw.dans.lib.util.pollingtaskexec.TaskSource;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 @RequiredArgsConstructor
 public class IntegrityCheckTaskSource implements TaskSource<IntegrityCheckTask> {
     private final IntegrityCheckTaskDao integrityCheckTaskDao;
     private final SchedulingConfig schedulingConfig;
+    private final Duration minimalFrequency;
     private final Clock clock;
 
-    public IntegrityCheckTaskSource(IntegrityCheckTaskDao integrityCheckTaskDao, SchedulingConfig schedulingConfig) {
-        this(integrityCheckTaskDao, schedulingConfig, Clock.systemDefaultZone());
+    public IntegrityCheckTaskSource(IntegrityCheckTaskDao integrityCheckTaskDao, SchedulingConfig schedulingConfig, Duration minimalFrequency) {
+        this(integrityCheckTaskDao, schedulingConfig, minimalFrequency, Clock.systemDefaultZone());
     }
 
     @Override
@@ -40,8 +43,9 @@ public class IntegrityCheckTaskSource implements TaskSource<IntegrityCheckTask> 
             return Optional.empty();
         }
 
-        return integrityCheckTaskDao.findTasksToExecute().stream()
-            .findFirst()
+        // A file is due for a (re)check when it was never checked or last checked longer ago than minimalFrequency.
+        OffsetDateTime threshold = OffsetDateTime.now(clock).minus(minimalFrequency);
+        return integrityCheckTaskDao.findNextExecutableTask(threshold)
             .map(task -> {
                 task.setStatus(IntegrityCheckTaskStatus.SCHEDULED);
                 return integrityCheckTaskDao.save(task);

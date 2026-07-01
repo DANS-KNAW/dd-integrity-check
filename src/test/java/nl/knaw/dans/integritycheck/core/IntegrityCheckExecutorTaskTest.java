@@ -238,5 +238,7 @@ class IntegrityCheckExecutorTaskTest {
         IntegrityCheckTask updatedTask = daoTestRule.getSessionFactory().openSession().get(IntegrityCheckTask.class, task.getId());
 
         assertThat(updatedTask.getStatus()).isEqualTo(IntegrityCheckTaskStatus.ERROR);
+        // The timestamp must be stamped so the failed task respects the recheck cadence instead of being retried every poll.
+        assertThat(updatedTask.getCalculationTimestamp()).isNotNull();
     }
 }

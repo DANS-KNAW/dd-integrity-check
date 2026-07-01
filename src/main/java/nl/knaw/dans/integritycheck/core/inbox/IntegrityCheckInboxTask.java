@@ -34,15 +34,10 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
-import java.util.List;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -59,7 +54,6 @@ public class IntegrityCheckInboxTask implements Runnable {
     private final IntegrityCheckTaskDao integrityCheckTaskDao;
     private final SessionFactory sessionFactory;
     private final File outbox;
-    private final Duration minimalFrequency;
 
     @Override
     public void run() {
@@ -69,7 +63,6 @@ public class IntegrityCheckInboxTask implements Runnable {
              Session session = sessionFactory.openSession()) {
 
             ManagedSessionContext.bind(session);
-            OffsetDateTime minimalCheckTimestamp = OffsetDateTime.now().minus(minimalFrequency);
 
             for (CSVRecord record : csvParser) {
                 Transaction transaction = session.beginTransaction();
@@ -81,23 +74,23 @@ public class IntegrityCheckInboxTask implements Runnable {
                     String checksumType = record.get("CHECKSUM_TYPE");
                     String expectedChecksumValue = record.get("CHECKSUM_VALUE");
 
-                    List<IntegrityCheckTask> existingTasks = integrityCheckTaskDao.findPendingOrRecentTasks(fileId, minimalCheckTimestamp);
+                    // DataFile records are immutable, so if a task already exists for this fileId, skip it.
+                    if (integrityCheckTaskDao.findOneByFileId(fileId).isPresent()) {
+                        log.warn("Integrity check task already exists for fileId: {}, skipping", fileId);
+                        transaction.rollback();
+                        continue;
+                    }
+                    log.info("Creating new integrity check task for fileId: {}", fileId);
+                    var task = new IntegrityCheckTask();
+                    task.setFileId(fileId);
+                    task.setStatus(IntegrityCheckTaskStatus.OPEN);
+                    task.setDatasetPid(datasetPid);
+                    task.setPublicationTimestamp(publicationTimestamp);
+                    task.setFilesize(filesize);
+                    task.setChecksumType(checksumType);
+                    task.setExpectedChecksumValue(expectedChecksumValue);
+                    integrityCheckTaskDao.save(task);
 
-                    if (existingTasks.isEmpty()) {
-                        log.debug("Scheduling new integrity check task for fileId: {}", fileId);
-                        IntegrityCheckTask newTask = new IntegrityCheckTask();
-                        newTask.setFileId(fileId);
-                        newTask.setDatasetPid(datasetPid);
-                        newTask.setPublicationTimestamp(publicationTimestamp);
-                        newTask.setFilesize(filesize);
-                        newTask.setChecksumType(checksumType);
-                        newTask.setExpectedChecksumValue(expectedChecksumValue);
-                        newTask.setStatus(IntegrityCheckTaskStatus.OPEN);
-                        integrityCheckTaskDao.save(newTask);
-                    }
-                    else {
-                        log.debug("Task already pending or executed recently for fileId: {}", fileId);
-                    }
                     transaction.commit();
                 }
                 catch (Exception e) {

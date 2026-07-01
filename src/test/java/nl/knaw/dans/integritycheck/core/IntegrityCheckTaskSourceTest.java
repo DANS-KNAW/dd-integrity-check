@@ -25,8 +25,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
 
@@ -35,6 +37,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(DropwizardExtensionsSupport.class)
 class IntegrityCheckTaskSourceTest {
+
+    private static final Duration MINIMAL_FREQUENCY = Duration.ofDays(30);
 
     private final DAOTestExtension daoTestRule = DAOTestExtension.newBuilder()
         .addEntityClass(IntegrityCheckTask.class)
@@ -51,7 +55,7 @@ class IntegrityCheckTaskSourceTest {
         // Default to always open window
         when(schedulingConfig.getStartAfter()).thenReturn(LocalTime.MIN);
         when(schedulingConfig.getStartBefore()).thenReturn(LocalTime.MAX);
-        taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, schedulingConfig);
+        taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, schedulingConfig, MINIMAL_FREQUENCY);
     }
 
     @Test
@@ -68,7 +72,7 @@ class IntegrityCheckTaskSourceTest {
         assertThat(task.get().getFileId()).isEqualTo(1L);
         assertThat(task.get().getStatus()).isEqualTo(IntegrityCheckTaskStatus.SCHEDULED);
 
-        // Verify that the next call returns the second task, because first one is now SCHEDULED and nextInput only picks OPEN
+        // Verify that the next call returns the second task, because the first one is now SCHEDULED and thus excluded
         Optional<IntegrityCheckTask> nextTask = daoTestRule.inTransaction(() -> taskSource.nextInput());
         assertThat(nextTask).isPresent();
         assertThat(nextTask.get().getFileId()).isEqualTo(2L);
@@ -95,6 +99,34 @@ class IntegrityCheckTaskSourceTest {
 
         Optional<IntegrityCheckTask> nextTask = daoTestRule.inTransaction(() -> taskSource.nextInput());
         assertThat(nextTask).isEmpty();
+    }
+
+    @Test
+    void nextInput_should_reselect_finished_task_checked_longer_ago_than_minimal_frequency() {
+        daoTestRule.inTransaction(() -> {
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1")
+                .status(IntegrityCheckTaskStatus.FINISHED).calculatedChecksumValue("sha-1").calculationTimestamp(OffsetDateTime.now().minusDays(40)).build());
+            return null;
+        });
+
+        Optional<IntegrityCheckTask> task = daoTestRule.inTransaction(() -> taskSource.nextInput());
+
+        assertThat(task).isPresent();
+        assertThat(task.get().getFileId()).isEqualTo(1L);
+        assertThat(task.get().getStatus()).isEqualTo(IntegrityCheckTaskStatus.SCHEDULED);
+    }
+
+    @Test
+    void nextInput_should_not_reselect_recently_finished_task() {
+        daoTestRule.inTransaction(() -> {
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1")
+                .status(IntegrityCheckTaskStatus.FINISHED).calculatedChecksumValue("sha-1").calculationTimestamp(OffsetDateTime.now().minusDays(1)).build());
+            return null;
+        });
+
+        Optional<IntegrityCheckTask> task = daoTestRule.inTransaction(() -> taskSource.nextInput());
+
+        assertThat(task).isEmpty();
     }
 
     @Test
@@ -154,7 +186,7 @@ class IntegrityCheckTaskSourceTest {
 
         // 2024-01-01 23:00 UTC
         Clock clock = Clock.fixed(Instant.parse("2024-01-01T23:00:00Z"), ZoneId.of("UTC"));
-        taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, schedulingConfig, clock);
+        taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, schedulingConfig, MINIMAL_FREQUENCY, clock);
 
         daoTestRule.inTransaction(() -> {
             integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").build());
@@ -173,7 +205,7 @@ class IntegrityCheckTaskSourceTest {
 
         // 2024-01-01 01:00 UTC
         Clock clock = Clock.fixed(Instant.parse("2024-01-01T01:00:00Z"), ZoneId.of("UTC"));
-        taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, schedulingConfig, clock);
+        taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, schedulingConfig, MINIMAL_FREQUENCY, clock);
 
         daoTestRule.inTransaction(() -> {
             integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").build());
@@ -192,7 +224,7 @@ class IntegrityCheckTaskSourceTest {
 
         // 2024-01-01 12:00 UTC
         Clock clock = Clock.fixed(Instant.parse("2024-01-01T12:00:00Z"), ZoneId.of("UTC"));
-        taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, schedulingConfig, clock);
+        taskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, schedulingConfig, MINIMAL_FREQUENCY, clock);
 
         daoTestRule.inTransaction(() -> {
             integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").build());

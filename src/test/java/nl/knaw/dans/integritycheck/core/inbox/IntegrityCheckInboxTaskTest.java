@@ -31,11 +31,12 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 @ExtendWith(DropwizardExtensionsSupport.class)
 class IntegrityCheckInboxTaskTest {
@@ -67,8 +68,7 @@ class IntegrityCheckInboxTaskTest {
             csvFile,
             integrityCheckTaskDao,
             daoTestRule.getSessionFactory(),
-            outbox,
-            Duration.ofDays(30)
+            outbox
         );
 
         task.run();
@@ -77,7 +77,7 @@ class IntegrityCheckInboxTaskTest {
         Session session = daoTestRule.getSessionFactory().openSession();
         try {
             ManagedSessionContext.bind(session);
-            tasks = integrityCheckTaskDao.findTasksToExecute();
+            tasks = session.createQuery("FROM IntegrityCheckTask", IntegrityCheckTask.class).list();
         } finally {
             ManagedSessionContext.unbind(daoTestRule.getSessionFactory());
             session.close();
@@ -88,8 +88,8 @@ class IntegrityCheckInboxTaskTest {
     }
 
     @Test
-    void should_not_schedule_task_if_already_pending() throws Exception {
-        // Prepare pending task
+    void should_skip_existing_task() throws Exception {
+        // Prepare existing task
         daoTestRule.inTransaction(() -> {
             IntegrityCheckTask pendingTask = new IntegrityCheckTask();
             pendingTask.setFileId(1L);
@@ -106,8 +106,7 @@ class IntegrityCheckInboxTaskTest {
             csvFile,
             integrityCheckTaskDao,
             daoTestRule.getSessionFactory(),
-            outbox,
-            Duration.ofDays(30)
+            outbox
         );
 
         task.run();
@@ -121,13 +120,15 @@ class IntegrityCheckInboxTaskTest {
             ManagedSessionContext.unbind(daoTestRule.getSessionFactory());
             session.close();
         }
+        // DataFile records are immutable, so the existing task is skipped and its metadata is left unchanged.
         assertThat(tasks).hasSize(1);
         assertThat(tasks.get(0).getExpectedChecksumValue()).isEqualTo("old-sha1");
     }
 
     @Test
-    void should_not_schedule_task_if_executed_recently() throws Exception {
-        // Prepare recently executed task
+    void should_not_change_status_or_calculation_timestamp_of_existing_task() throws Exception {
+        // Prepare previously executed task
+        var calculationTimestamp = OffsetDateTime.now().minusDays(10);
         daoTestRule.inTransaction(() -> {
             IntegrityCheckTask recentTask = new IntegrityCheckTask();
             recentTask.setFileId(1L);
@@ -135,7 +136,7 @@ class IntegrityCheckInboxTaskTest {
             recentTask.setChecksumType("SHA-1");
             recentTask.setExpectedChecksumValue("sha1-1");
             recentTask.setCalculatedChecksumValue("sha1-1");
-            recentTask.setCalculationTimestamp(OffsetDateTime.now().minusDays(10));
+            recentTask.setCalculationTimestamp(calculationTimestamp);
             recentTask.setStatus(IntegrityCheckTaskStatus.FINISHED);
             integrityCheckTaskDao.save(recentTask);
         });
@@ -147,8 +148,7 @@ class IntegrityCheckInboxTaskTest {
             csvFile,
             integrityCheckTaskDao,
             daoTestRule.getSessionFactory(),
-            outbox,
-            Duration.ofDays(30)
+            outbox
         );
 
         task.run();
@@ -162,47 +162,11 @@ class IntegrityCheckInboxTaskTest {
             ManagedSessionContext.unbind(daoTestRule.getSessionFactory());
             session.close();
         }
+        // DataFile records are immutable, so the inbox skips existing tasks entirely,
+        // leaving status and calculationTimestamp unchanged.
         assertThat(tasks).hasSize(1);
-    }
-    
-    @Test
-    void should_schedule_task_if_executed_long_ago() throws Exception {
-        // Prepare old executed task
-        daoTestRule.inTransaction(() -> {
-            IntegrityCheckTask oldTask = new IntegrityCheckTask();
-            oldTask.setFileId(1L);
-            oldTask.setFilesize(100L);
-            oldTask.setChecksumType("SHA-1");
-            oldTask.setExpectedChecksumValue("sha1-1");
-            oldTask.setCalculatedChecksumValue("sha1-1");
-            oldTask.setCalculationTimestamp(OffsetDateTime.now().minusDays(40));
-            oldTask.setStatus(IntegrityCheckTaskStatus.FINISHED);
-            integrityCheckTaskDao.save(oldTask);
-        });
-
-        Path csvFile = tempDir.resolve("input.csv");
-        FileUtils.writeStringToFile(csvFile.toFile(), "FILEID,FILESIZE,CHECKSUM_TYPE,CHECKSUM_VALUE\n1,100,SHA-1,sha1-1", StandardCharsets.UTF_8);
-
-        IntegrityCheckInboxTask task = new IntegrityCheckInboxTask(
-            csvFile,
-            integrityCheckTaskDao,
-            daoTestRule.getSessionFactory(),
-            outbox,
-            Duration.ofDays(30)
-        );
-
-        task.run();
-
-        List<IntegrityCheckTask> tasks;
-        Session session = daoTestRule.getSessionFactory().openSession();
-        try {
-            ManagedSessionContext.bind(session);
-            tasks = integrityCheckTaskDao.findByFileId(1L);
-        } finally {
-            ManagedSessionContext.unbind(daoTestRule.getSessionFactory());
-            session.close();
-        }
-        assertThat(tasks).hasSize(2);
+        assertThat(tasks.get(0).getStatus()).isEqualTo(IntegrityCheckTaskStatus.FINISHED);
+        assertThat(tasks.get(0).getCalculationTimestamp()).isCloseTo(calculationTimestamp, within(1, ChronoUnit.SECONDS));
     }
 
     @Test
@@ -220,22 +184,21 @@ class IntegrityCheckInboxTaskTest {
             csvFile,
             integrityCheckTaskDao,
             daoTestRule.getSessionFactory(),
-            outbox,
-            Duration.ofDays(30)
+            outbox
         );
 
         task.run();
 
-        List<IntegrityCheckTask> tasks;
+        long count;
         Session session = daoTestRule.getSessionFactory().openSession();
         try {
             ManagedSessionContext.bind(session);
-            tasks = integrityCheckTaskDao.findTasksToExecute();
+            count = session.createQuery("SELECT COUNT(t) FROM IntegrityCheckTask t", Long.class).getSingleResult();
         } finally {
             ManagedSessionContext.unbind(daoTestRule.getSessionFactory());
             session.close();
         }
-        assertThat(tasks).hasSize(totalRecords);
+        assertThat(count).isEqualTo(totalRecords);
         assertThat(new File(outbox, "large_input.csv")).exists();
     }
 }

@@ -80,6 +80,9 @@ public class IntegrityCheckExecutorTask implements Runnable {
                         IntegrityCheckTask errorTask = integrityCheckTaskDao.findById(integrityCheckTask.getId()).orElse(null);
                         if (errorTask != null) {
                             errorTask.setStatus(IntegrityCheckTaskStatus.ERROR);
+                            // Stamp the timestamp so the task respects the recheck cadence instead of being
+                            // re-selected on every poll (the selection query treats a null timestamp as "never checked").
+                            errorTask.setCalculationTimestamp(OffsetDateTime.now());
                             integrityCheckTaskDao.save(errorTask);
                         }
                         errorTransaction.commit();

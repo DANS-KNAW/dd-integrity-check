@@ -73,8 +73,7 @@ public class DdIntegrityCheckApplication extends Application<DdIntegrityCheckCon
         final var inboxTaskFactory = new IntegrityCheckInboxTaskFactory(
             integrityCheckTaskDao,
             hibernateBundle.getSessionFactory(),
-            fileRecordsConfig.getOutbox(),
-            Duration.ofMillis(fileRecordsConfig.getMinimalFrequency().toMilliseconds())
+            fileRecordsConfig.getOutbox()
         );
 
         final var inbox = Inbox.builder()
@@ -84,7 +83,11 @@ public class DdIntegrityCheckApplication extends Application<DdIntegrityCheckCon
             .executorService(environment.lifecycle().executorService("inbox").minThreads(1).maxThreads(1).build())
             .build();
 
-        final var integrityCheckTaskSource = new IntegrityCheckTaskSource(integrityCheckTaskDao, checksumCalculationConfig.getScheduling());
+        final var integrityCheckTaskSource = new IntegrityCheckTaskSource(
+            integrityCheckTaskDao,
+            checksumCalculationConfig.getScheduling(),
+            Duration.ofMillis(fileRecordsConfig.getMinimalFrequency().toMilliseconds())
+        );
         final DataverseClient dataverseClient = config.getDataverse().build(environment, "dataverse");
         final var integrityCheckTaskFactory = new IntegrityCheckTaskFactory(integrityCheckTaskDao, hibernateBundle.getSessionFactory(), dataverseClient, integrityCheckConfig);
 

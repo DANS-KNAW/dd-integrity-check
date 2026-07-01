@@ -22,17 +22,15 @@ import org.hibernate.SessionFactory;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.time.Duration;
 
 @RequiredArgsConstructor
 public class IntegrityCheckInboxTaskFactory implements InboxTaskFactory {
     private final IntegrityCheckTaskDao integrityCheckTaskDao;
     private final SessionFactory sessionFactory;
     private final File outbox;
-    private final Duration minimalFrequency;
 
     @Override
     public Runnable createInboxTask(Path path) {
-        return new IntegrityCheckInboxTask(path, integrityCheckTaskDao, sessionFactory, outbox, minimalFrequency);
+        return new IntegrityCheckInboxTask(path, integrityCheckTaskDao, sessionFactory, outbox);
     }
 }

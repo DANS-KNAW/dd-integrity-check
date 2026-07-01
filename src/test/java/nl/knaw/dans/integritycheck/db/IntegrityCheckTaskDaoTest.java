@@ -59,18 +59,54 @@ class IntegrityCheckTaskDaoTest {
     }
 
     @Test
-    void findTasksToExecute_should_return_only_tasks_with_status_open() {
+    void findNextExecutableTask_should_skip_scheduled_and_recently_checked_tasks() {
+        var now = OffsetDateTime.now();
         daoTestRule.inTransaction(() -> {
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").status(IntegrityCheckTaskStatus.OPEN).build());
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-2").status(IntegrityCheckTaskStatus.FINISHED).calculatedChecksumValue("sha-2").build());
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(3L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-3").status(IntegrityCheckTaskStatus.SCHEDULED).build());
+            // In-flight task: never selectable
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").status(IntegrityCheckTaskStatus.SCHEDULED).build());
+            // Recently checked: not yet due
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-2").status(IntegrityCheckTaskStatus.FINISHED).calculatedChecksumValue("sha-2").calculationTimestamp(now.minusDays(1)).build());
+            // Checked long ago: due for recheck
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(3L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-3").status(IntegrityCheckTaskStatus.FINISHED).calculatedChecksumValue("sha-3").calculationTimestamp(now.minusDays(40)).build());
             return null;
         });
 
-        List<IntegrityCheckTask> tasks = daoTestRule.inTransaction(() -> integrityCheckTaskDao.findTasksToExecute());
+        var threshold = now.minusDays(30);
+        var task = daoTestRule.inTransaction(() -> integrityCheckTaskDao.findNextExecutableTask(threshold));
 
-        assertThat(tasks).hasSize(1);
-        assertThat(tasks).extracting("fileId").containsExactly(1L);
+        assertThat(task).isPresent();
+        assertThat(task.get().getFileId()).isEqualTo(3L);
+    }
+
+    @Test
+    void findNextExecutableTask_should_pick_least_recently_touched_first() {
+        var now = OffsetDateTime.now();
+        daoTestRule.inTransaction(() -> {
+            // Never checked, but only just created: eligible via null calculationTimestamp
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").status(IntegrityCheckTaskStatus.OPEN).build());
+            // Checked long ago: became eligible earlier than the new task was created, so should be picked first
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-2").status(IntegrityCheckTaskStatus.FINISHED).calculatedChecksumValue("sha-2").calculationTimestamp(now.minusDays(40)).build());
+            return null;
+        });
+
+        var threshold = now.minusDays(30);
+        var task = daoTestRule.inTransaction(() -> integrityCheckTaskDao.findNextExecutableTask(threshold));
+
+        assertThat(task).isPresent();
+        assertThat(task.get().getFileId()).isEqualTo(2L);
+    }
+
+    @Test
+    void findNextExecutableTask_should_return_empty_when_nothing_is_due() {
+        var now = OffsetDateTime.now();
+        daoTestRule.inTransaction(() -> {
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").status(IntegrityCheckTaskStatus.FINISHED).calculatedChecksumValue("sha-1").calculationTimestamp(now.minusDays(1)).build());
+            return null;
+        });
+
+        var task = daoTestRule.inTransaction(() -> integrityCheckTaskDao.findNextExecutableTask(now.minusDays(30)));
+
+        assertThat(task).isEmpty();
     }
 
     @Test
@@ -88,26 +124,17 @@ class IntegrityCheckTaskDaoTest {
     }
 
     @Test
-    void findPendingOrRecentTasks_should_return_correct_tasks() {
-        var now = OffsetDateTime.now();
-        var recently = now.minusDays(1);
-        var longAgo = now.minusDays(10);
-
+    void findOneByFileId_should_return_the_task_for_that_file() {
         daoTestRule.inTransaction(() -> {
-            // Pending task for file-1
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").status(IntegrityCheckTaskStatus.OPEN).build());
-            // Recent task for file-1
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").status(IntegrityCheckTaskStatus.FINISHED).calculatedChecksumValue("sha-1").calculationTimestamp(now).build());
-            // Old task for file-1 (should NOT be returned)
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").status(IntegrityCheckTaskStatus.FINISHED).calculatedChecksumValue("sha-1").calculationTimestamp(longAgo).build());
-            // Pending task for file-2 (should NOT be returned when querying for file-1)
-            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-2").status(IntegrityCheckTaskStatus.OPEN).build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(1L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-1").build());
+            integrityCheckTaskDao.save(IntegrityCheckTask.builder().fileId(2L).filesize(100L).checksumType("SHA-1").expectedChecksumValue("sha-2").build());
             return null;
         });
 
-        List<IntegrityCheckTask> tasks = daoTestRule.inTransaction(() -> integrityCheckTaskDao.findPendingOrRecentTasks(1L, recently));
+        var task = daoTestRule.inTransaction(() -> integrityCheckTaskDao.findOneByFileId(2L));
 
-        assertThat(tasks).hasSize(2);
-        assertThat(tasks).allMatch(t -> t.getFileId().equals(1L));
+        assertThat(task).isPresent();
+        assertThat(task.get().getFileId()).isEqualTo(2L);
+        assertThat(daoTestRule.inTransaction(() -> integrityCheckTaskDao.findOneByFileId(99L))).isEmpty();
     }
 }
