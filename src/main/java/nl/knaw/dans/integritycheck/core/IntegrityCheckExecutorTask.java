@@ -36,6 +36,7 @@ import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
+import java.util.Set;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -130,7 +131,7 @@ public class IntegrityCheckExecutorTask implements Runnable {
         for (long start = 0; start < fileSize; start += chunkSize) {
             long end = Math.min(start + chunkSize, fileSize);
             GetFileRange range = new GetFileRange(start, end - 1);
-            downloadChunkWithRetries(task.getFileId(), range, digest, buffer);
+            downloadChunkWithRetries(task.getFileId(), range, digest, buffer, start == 0 && end == fileSize);
         }
         return Hex.encodeHexString(digest.digest());
     }
@@ -145,7 +146,7 @@ public class IntegrityCheckExecutorTask implements Runnable {
         };
     }
 
-    private void downloadChunkWithRetries(Long fileId, GetFileRange range, MessageDigest digest, byte[] buffer) throws IOException, InterruptedException {
+    private void downloadChunkWithRetries(Long fileId, GetFileRange range, MessageDigest digest, byte[] buffer, boolean isCompleteFile) throws IOException, InterruptedException {
         int retries = config.getChecksumCalculation().getDownload().getRetries();
         long waitBetweenRetries = config.getChecksumCalculation().getDownload().getWaitBetweenRetries().toMilliseconds();
         var options = new GetFileOptions();
@@ -155,8 +156,9 @@ public class IntegrityCheckExecutorTask implements Runnable {
         for (int i = 0; i <= retries; i++) {
             try {
                 dataverseClient.basicFileAccess(fileId).getFile(options, range, response -> {
-                    if (response.getCode() != HttpStatus.SC_PARTIAL_CONTENT) {
-                        throw new IOException("Expected 206 for range " + range + ", got " + response.getCode());
+                    var allowedCodes = isCompleteFile ? Set.of(HttpStatus.SC_OK, HttpStatus.SC_PARTIAL_CONTENT) : Set.of(HttpStatus.SC_PARTIAL_CONTENT);
+                    if (!allowedCodes.contains(response.getCode())) {
+                        throw new IOException("Expected one of" + allowedCodes + " for range " + range + ", got " + response.getCode());
                     }
                     try (InputStream is = response.getEntity().getContent()) {
                         int totalRead = 0;
@@ -179,7 +181,7 @@ public class IntegrityCheckExecutorTask implements Runnable {
                 });
                 return; // Success, return from retry loop
             }
-                catch (Exception e) {
+            catch (Exception e) {
                 if (i == retries) {
                     throw new IOException("Failed to download chunk " + range + " for file " + fileId + " after " + retries + " retries", e);
                 }

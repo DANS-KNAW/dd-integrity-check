@@ -28,6 +28,7 @@ import nl.knaw.dans.lib.dataverse.model.file.FileMeta;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -95,6 +96,7 @@ class IntegrityCheckExecutorTaskTest {
         when(basicFileAccessApi.getFile(any(GetFileOptions.class), any(GetFileRange.class), any(HttpClientResponseHandler.class))).thenAnswer(invocation -> {
             HttpClientResponseHandler<?> handler = invocation.getArgument(2);
             ClassicHttpResponse httpResponse = mock(ClassicHttpResponse.class);
+            when(httpResponse.getCode()).thenReturn(HttpStatus.SC_PARTIAL_CONTENT);
             HttpEntity entity = mock(HttpEntity.class);
             when(httpResponse.getEntity()).thenReturn(entity);
             when(entity.getContent()).thenReturn(new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)));
@@ -136,6 +138,7 @@ class IntegrityCheckExecutorTaskTest {
         when(basicFileAccessApi.getFile(any(GetFileOptions.class), any(GetFileRange.class), any(HttpClientResponseHandler.class))).thenAnswer(invocation -> {
             HttpClientResponseHandler<?> handler = invocation.getArgument(2);
             ClassicHttpResponse httpResponse = mock(ClassicHttpResponse.class);
+            when(httpResponse.getCode()).thenReturn(HttpStatus.SC_PARTIAL_CONTENT);
             HttpEntity entity = mock(HttpEntity.class);
             when(httpResponse.getEntity()).thenReturn(entity);
             when(entity.getContent()).thenReturn(new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)));
@@ -144,7 +147,7 @@ class IntegrityCheckExecutorTaskTest {
 
         IntegrityCheckTask task = daoTestRule.inTransaction(() -> integrityCheckTaskDao.save(IntegrityCheckTask.builder()
             .fileId(fileId)
-            .filesize(10L)
+            .filesize((long) content.length())
             .checksumType("SHA-1")
             .expectedChecksumValue("wrong-sha1")
             .build()));
@@ -183,6 +186,7 @@ class IntegrityCheckExecutorTaskTest {
                 GetFileRange range = invocation.getArgument(1);
                 HttpClientResponseHandler<?> handler = invocation.getArgument(2);
                 ClassicHttpResponse httpResponse = mock(ClassicHttpResponse.class);
+                when(httpResponse.getCode()).thenReturn(HttpStatus.SC_PARTIAL_CONTENT);
                 HttpEntity entity = mock(HttpEntity.class);
                 when(httpResponse.getEntity()).thenReturn(entity);
                 
@@ -195,6 +199,7 @@ class IntegrityCheckExecutorTaskTest {
                 GetFileRange range = invocation.getArgument(1);
                 HttpClientResponseHandler<?> handler = invocation.getArgument(2);
                 ClassicHttpResponse httpResponse = mock(ClassicHttpResponse.class);
+                when(httpResponse.getCode()).thenReturn(HttpStatus.SC_PARTIAL_CONTENT);
                 HttpEntity entity = mock(HttpEntity.class);
                 when(httpResponse.getEntity()).thenReturn(entity);
                 
