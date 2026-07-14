@@ -23,6 +23,7 @@ import nl.knaw.dans.lib.dataverse.DataverseClient;
 import nl.knaw.dans.lib.dataverse.GetFileOptions;
 import nl.knaw.dans.lib.dataverse.GetFileRange;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.hc.core5.http.HttpStatus;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -154,10 +155,14 @@ public class IntegrityCheckExecutorTask implements Runnable {
         for (int i = 0; i <= retries; i++) {
             try {
                 dataverseClient.basicFileAccess(fileId).getFile(options, range, response -> {
+                    if (response.getCode() != HttpStatus.SC_PARTIAL_CONTENT) {
+                        throw new IOException("Expected 206 for range " + range + ", got " + response.getCode());
+                    }
                     try (InputStream is = response.getEntity().getContent()) {
                         int totalRead = 0;
                         int read;
                         int remaining = buffer.length;
+                        int expectedLength = (int) (range.getEnd() - range.getStart() + 1);
                         while ((read = is.read(buffer, totalRead, remaining)) != -1) {
                             totalRead += read;
                             remaining = buffer.length - totalRead;
@@ -165,16 +170,16 @@ public class IntegrityCheckExecutorTask implements Runnable {
                                 break;
                             }
                         }
+                        if (totalRead != expectedLength) {
+                            throw new IOException("Expected " + expectedLength + " bytes for range " + range + ", got " + totalRead);
+                        }
                         digest.update(buffer, 0, totalRead);
-                    }
-                    catch (IOException e) {
-                        throw new RuntimeException(e);
                     }
                     return null;
                 });
                 return; // Success, return from retry loop
             }
-            catch (Exception e) {
+                catch (Exception e) {
                 if (i == retries) {
                     throw new IOException("Failed to download chunk " + range + " for file " + fileId + " after " + retries + " retries", e);
                 }
