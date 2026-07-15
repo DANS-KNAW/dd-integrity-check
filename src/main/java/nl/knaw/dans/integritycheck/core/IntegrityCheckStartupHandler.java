@@ -36,10 +36,11 @@ public class IntegrityCheckStartupHandler implements Managed {
     public void start() throws Exception {
         log.info("Checking for previously scheduled tasks at startup...");
         List<IntegrityCheckTask> scheduledTasks = integrityCheckTaskDao.findScheduledTasks();
-        log.info("Found {} tasks to resume", scheduledTasks.size());
+        log.info("Found {} tasks to resume, resetting status to OPEN", scheduledTasks.size());
         for (IntegrityCheckTask task : scheduledTasks) {
-            log.info("Rescheduling task for file ID: {}", task.getFileId());
-            taskScheduler.schedule(integrityCheckTaskFactory.create(task));
+            log.info("Resetting task for file ID: {} to OPEN", task.getFileId());
+            task.setStatus(IntegrityCheckTaskStatus.OPEN);
+            integrityCheckTaskDao.save(task);
         }
     }
 
