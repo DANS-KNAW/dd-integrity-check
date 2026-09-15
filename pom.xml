@@ -30,7 +30,7 @@
 
     <name>DD Integrity Check</name>
     <description>Service that checks the integrity of Dataverse datafiles</description>
-    <url>https://github.com/DANS-KNAW/dd-integrity-check</url>
+    <url>https://dans-knaw.github.io/dd-integrity-check</url>
     <inceptionYear>2026</inceptionYear>
 
     <scm>
