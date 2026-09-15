@@ -22,27 +22,25 @@
     <parent>
         <groupId>nl.knaw.dans</groupId>
         <artifactId>dd-parent</artifactId>
-        <version>1.12.0</version>
+        <version>3.0.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>dd-integrity-check</artifactId>
     <version>0.91.1-SNAPSHOT</version>
 
     <name>DD Integrity Check</name>
-    <url>https://github.com/DANS-KNAW/dd-integrity-check</url>
     <description>Service that checks the integrity of Dataverse datafiles</description>
+    <url>https://github.com/DANS-KNAW/dd-integrity-check</url>
     <inceptionYear>2026</inceptionYear>
-
-    <properties>
-        <main-class>nl.knaw.dans.integritycheck.DdIntegrityCheckApplication</main-class>
-        <dans-dataverse-client-lib.version>2.1.1</dans-dataverse-client-lib.version>
-        <dans-java-utils.version>4.1.0</dans-java-utils.version>
-    </properties>
 
     <scm>
         <developerConnection>scm:git:ssh://github.com/DANS-KNAW/dd-integrity-check</developerConnection>
         <tag>HEAD</tag>
     </scm>
+
+    <properties>
+        <main-class>nl.knaw.dans.integritycheck.DdIntegrityCheckApplication</main-class>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -50,7 +48,7 @@
             <artifactId>dans-java-utils</artifactId>
         </dependency>
         <dependency>
-            <groupId>nl.knaw.dans</groupId>
+            <groupId>nl.datastations</groupId>
             <artifactId>dans-dataverse-client-lib</artifactId>
         </dependency>
         <dependency>
@@ -131,53 +129,6 @@
             </plugin>
         </plugins>
     </build>
-
-
-    <repositories>
-        <repository>
-            <id>dans-releases</id>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <url>https://maven.dans.knaw.nl/releases/</url>
-        </repository>
-        <repository>
-            <id>dans-snapshots</id>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-            <url>https://maven.dans.knaw.nl/snapshots/</url>
-        </repository>
-    </repositories>
-
-    <pluginRepositories>
-        <pluginRepository>
-            <id>dans-releases</id>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <url>https://maven.dans.knaw.nl/releases/</url>
-        </pluginRepository>
-        <pluginRepository>
-            <id>dans-snapshots</id>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-            <url>https://maven.dans.knaw.nl/snapshots/</url>
-        </pluginRepository>
-    </pluginRepositories>
 
     <profiles>
         <profile>
