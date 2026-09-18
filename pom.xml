@@ -34,6 +34,7 @@
     <inceptionYear>2026</inceptionYear>
 
     <scm>
+        <connection>scm:git:https://github.com/DANS-KNAW/dd-integrity-check</connection>
         <developerConnection>scm:git:ssh://github.com/DANS-KNAW/dd-integrity-check</developerConnection>
         <tag>HEAD</tag>
         <url>https://github.com/DANS-KNAW/${project.artifactId}</url>
