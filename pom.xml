@@ -26,7 +26,7 @@
     </parent>
 
     <artifactId>dd-integrity-check</artifactId>
-    <version>0.91.1-SNAPSHOT</version>
+    <version>1.0.0</version>
 
     <name>DD Integrity Check</name>
     <description>Service that checks the integrity of Dataverse datafiles</description>
@@ -36,7 +36,7 @@
     <scm>
         <connection>scm:git:https://github.com/DANS-KNAW/dd-integrity-check</connection>
         <developerConnection>scm:git:ssh://github.com/DANS-KNAW/dd-integrity-check</developerConnection>
-        <tag>HEAD</tag>
+        <tag>v1.0.0</tag>
         <url>https://github.com/DANS-KNAW/dd-integrity-check</url>
     </scm>
 
