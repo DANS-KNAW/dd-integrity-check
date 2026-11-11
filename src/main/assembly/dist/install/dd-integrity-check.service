@@ -5,7 +5,7 @@ Description=Dd Integrity Check Service
 ExecStart=/opt/dans.knaw.nl/dd-integrity-check/bin/dd-integrity-check server /etc/opt/dans.knaw.nl/dd-integrity-check/config.yml
 # Java returns 143 even if the SIGTERM was handled correctly.
 SuccessExitStatus=143
-Environment="JAVA_OPTS=-Xms64m"
+Environment="JAVA_OPTS=-Xms64m -Xmx2g"
 Environment="LC_ALL=en_US.UTF-8"
 
 User=dd-integrity-check
